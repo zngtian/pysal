@@ -33,7 +33,7 @@ def local_moran(dbf_file_name, shp_file_name, attribute_name,
     # create a binary attribute to indicate which shapes have significant
     # lisas
 
-    sig_lisas = 1* (lm.p_sim < 0.05)
+    sig_lisas = 1* (lm.p_sim <= 0.01)
 
     # write out data for scatter plot (x-axis is the attribute, y is the
     # spatial lag)
