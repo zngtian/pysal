@@ -95,11 +95,9 @@ def k(points, n_bins=10, delta=1.00001):
     if not isinstance(points, PointsCollection):
         points = PointsCollection(points)
     width = points.mtd / n_bins
-    print points.mtd
     bins = np.arange(0, pc.mtd+width, width)
     bins[-1] *= delta # to have max contained
     counts = np.zeros(len(bins)-1,)
-    print len(counts)
 
     pairs = 0
     maxd = 0
@@ -109,19 +107,14 @@ def k(points, n_bins=10, delta=1.00001):
         dx = points.points[i,0] - points.points[:,0]
         dy = points.points[i,1] - points.points[:,1]
         d_i = np.sqrt(dx*dx + dy*dy)
-        print len(d_i)
-        pairs += len(d_i)
         counts_i = np.histogram(d_i, bins)[0]
         counts = counts + counts_i
-        maxd = max(maxd, max(d_i))
-        #print len(counts_i)
 
-    print pairs
-    print maxd
-
-
-
-    return bins, points.mtd, counts
+    results = {}
+    results['width'] = width
+    results['counts'] = counts
+    results['bins'] = bins
+    return results
 
 
 
