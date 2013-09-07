@@ -1,4 +1,5 @@
 import pysal as ps
+import scipy.spatial.distance as DISTANCE
 
 
 
@@ -25,6 +26,13 @@ def mbr(points):
     minc = points.min(axis=0)
 
     return [minc[0],minc[1], maxc[0], maxc[1]] 
+
+def csr_rect(n, rectangle):
+    # generate n csr points in a rectangle
+    left, lower, right, upper = rectangle
+    x = np.random.random(n) * (right - left)  + left 
+    y = np.random.random(n) * (upper - lower) + lower
+    return np.vstack((x,y)).T
 
 
 class PointsCollection(object):
@@ -91,7 +99,11 @@ class PointsCollection(object):
 
 
 
-def k(points, n_bins=10, delta=1.00001):
+def k(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05):
+    """
+    k-function
+    """
+
     if not isinstance(points, PointsCollection):
         points = PointsCollection(points)
     width = points.mtd / n_bins
@@ -101,21 +113,45 @@ def k(points, n_bins=10, delta=1.00001):
 
     pairs = 0
     maxd = 0
-    # brute force distances
-    for i in xrange(points.n-1):
-        p_i = points.points[i]
-        dx = points.points[i,0] - points.points[:,0]
-        dy = points.points[i,1] - points.points[:,1]
-        d_i = np.sqrt(dx*dx + dy*dy)
-        counts_i = np.histogram(d_i, bins)[0]
-        counts = counts + counts_i
+    pd = DISTANCE.pdist(points.points) #upper triangle of distance matrix
+    counts = np.histogram(pd, bins)[0]
 
+    counts = counts.cumsum()
     results = {}
     results['width'] = width
     results['counts'] = counts
     results['bins'] = bins
-    return results
 
+    #Ekd = points.density * np.pi * bins**2
+    #results['Ekd'] = Ekd
+
+    if permutations:
+        pCounts = np.zeros((len(bins)-1, permutations))
+        left = points.mbr.left
+        lower = points.mbr.lower
+        right = points.mbr.right
+        upper = points.mbr.upper
+
+        for permutation in xrange(permutations):
+            pCount = np.zeros(len(bins)-1,)
+
+            # sample within collection window
+            # for now just in the mbr, later for the window
+            rpoints = csr_rect(points.n, (left, lower, right, upper)) 
+            pd = DISTANCE.pdist(rpoints)
+            pCount = np.histogram(pd, bins)[0]
+            pCounts[:,permutation] = pCount.cumsum()
+
+        counts.shape = (len(counts),1)
+        pCounts = np.hstack((pCounts,counts))
+        pCounts.sort(axis=1)
+
+        # lower and upper pct envelopes
+        lp = np.int(pct * (permutations+1))
+        up = np.int((1-pct) * (permutations+1))
+        results['pCounts'] = pCounts[:, [lp,up]]
+
+    return results
 
 
 
@@ -129,6 +165,7 @@ if __name__ == '__main__':
 
     pc = PointsCollection(points)
 
+    res = k(pc)
 
-
+    
 
