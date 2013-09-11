@@ -1,5 +1,6 @@
 import pysal as ps
 import scipy.spatial.distance as DISTANCE
+from  scipy.spatial import cKDTree as CKDTREE
 
 
 
@@ -33,6 +34,8 @@ def csr_rect(n, rectangle):
     x = np.random.random(n) * (right - left)  + left 
     y = np.random.random(n) * (upper - lower) + lower
     return np.vstack((x,y)).T
+
+
 
 
 class PointsCollection(object):
@@ -98,32 +101,62 @@ class PointsCollection(object):
     mtd = property(get_max_theoretical_distance)
 
 
+def g(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05,
+        max_d=None):
+    """
+    Minimum Nearest Neighbor distance test
+    """
 
-def k(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05):
+    if not isinstance(points, PointsCollection):
+        points = PointsCollection(points)
+    tree = CKDTREE(points.points)
+    d, ids = tree.query(tree.data, k=2)
+
+    if max_d is None:
+        max_d = d.max()
+
+    width = max_d / n_bins
+    bins = np.arange(0, max_d, width)
+    bins[-1] *= delta
+    counts = np.zeros(len(bins)-1,)
+    gd = np.histogram(d[:,1], bins)[0]
+
+    return d, ids, gd, bins
+
+
+
+
+
+def k(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05, max_d =
+        None):
     """
     k-function
     """
 
     if not isinstance(points, PointsCollection):
         points = PointsCollection(points)
-    width = points.mtd / n_bins
-    bins = np.arange(0, pc.mtd+width, width)
+    if max_d is None:
+        max_d = (points.area / 2.)**(1/2.)
+    width = max_d / n_bins
+    bins = np.arange(0, max_d, width)
     bins[-1] *= delta # to have max contained
     counts = np.zeros(len(bins)-1,)
 
     pairs = 0
     maxd = 0
     pd = DISTANCE.pdist(points.points) #upper triangle of distance matrix
-    counts = np.histogram(pd, bins)[0]
+    counts = np.histogram(pd, bins)[0] * 2
 
     counts = counts.cumsum()
     results = {}
+    results['max_d'] = max_d
     results['width'] = width
     results['counts'] = counts
     results['bins'] = bins
+    kd = counts * points.area  /  points.n**2
+    results['k'] = kd
+    results['l'] = np.sqrt(kd/np.pi) - bins[1:]
 
-    #Ekd = points.density * np.pi * bins**2
-    #results['Ekd'] = Ekd
 
     if permutations:
         pCounts = np.zeros((len(bins)-1, permutations))
@@ -139,7 +172,7 @@ def k(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05):
             # for now just in the mbr, later for the window
             rpoints = csr_rect(points.n, (left, lower, right, upper)) 
             pd = DISTANCE.pdist(rpoints)
-            pCount = np.histogram(pd, bins)[0]
+            pCount = np.histogram(pd, bins)[0] * 2
             pCounts[:,permutation] = pCount.cumsum()
 
         counts.shape = (len(counts),1)
@@ -166,6 +199,10 @@ if __name__ == '__main__':
     pc = PointsCollection(points)
 
     res = k(pc)
+
+
+
+    r1 = g(points)
 
     
 
