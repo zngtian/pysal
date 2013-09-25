@@ -45,6 +45,9 @@ class PointsCollection(object):
     
     """
     def __init__(self, points, window=None):
+        
+        if type(points) != 'numpy.ndarray':
+            points = np.array(points)
 
         self._n = len(points)
         self._area = None
@@ -113,7 +116,7 @@ class PointsCollection(object):
 
 
 
-def g(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05,
+def G(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05,
         max_d=None):
     """
     Minimum Nearest Neighbor distance test
@@ -121,8 +124,7 @@ def g(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05,
 
     if not isinstance(points, PointsCollection):
         points = PointsCollection(points)
-    tree = CKDTREE(points.points)
-    d, ids = tree.query(tree.data, k=2)
+    d, ids = points.kdtree.query(points.kdtree.data, k=2)
 
     if max_d is None:
         max_d = d.max()
@@ -132,6 +134,7 @@ def g(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05,
     bins[-1] *= delta
     counts = np.zeros(len(bins)-1,)
     gd = np.histogram(d[:,1], bins)[0]
+
 
     return d, ids, gd, bins
 
@@ -190,6 +193,7 @@ def R(points, sampling_rate = 0.10, two_tailed=True, n_samples=99):
     results['z[nnd]'] = z
     results['p-value[nnd]'] = p
     results['two_tailed'] = two_tailed
+    results['nn_d'] = nn_distances
 
     # random sampling to minimize dependence of nnd
     # See http://www.seas.upenn.edu/~ese502/#notebook Chapter 3
@@ -299,7 +303,24 @@ if __name__ == '__main__':
 
 
 
-    r1 = g(points)
+    r1 = G(points)
+
+    # point pattern from O'Sullivan and Unwin (2003) pg 90
+    points = np.array([
+            [ 66.22, 32.54],
+            [ 22.52, 22.39],
+            [ 31.01, 81.21],
+            [  9.47, 31.02],
+            [ 30.78, 60.10],
+            [ 75.21, 58.93],
+            [ 79.26,  7.68],
+            [  8.23, 39.93],
+            [ 98.73, 42.53],
+            [ 89.78, 42.53],
+            [ 65.19, 92.08],
+            [ 54.46, 8.48]])
 
     
+    rres = R(points)
+
 
