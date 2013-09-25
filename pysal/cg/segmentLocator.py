@@ -7,7 +7,7 @@ import random
 import time
 
 __all__ = ["SegmentGrid", "SegmentLocator",
-           "Polyline_Shapefile_SegmentLocator"]
+           "Polyline_Shapefile_SegmentLocator", "random_segments"]
 DEBUG = False
 
 
@@ -45,6 +45,41 @@ class SegmentLocator(object):
         #print "distances",distances
         #print "argmin", numpy.argmin(distances)
         return possibles[numpy.argmin(distances)]
+
+
+    def intersections_bf(self):
+        """
+        Brute force segment intersection
+
+        Example
+        =======
+        >>> segments = [[12,7,13,11],
+        ...            [3,3,8,9],
+        ...         [3,11, 9,10],
+        ...         [4,10, 5,12],
+        ...         [6,9, 9,7]]
+        >>> segs = []
+        >>> for segment in segments:
+        ...     head = Point((segment[0], segment[1]))
+        ...     tail = Point((segment[2], segment[3]))
+        ...     segs.append(LineSegment(head, tail))
+        >>> locator = SegmentLocator(segs)
+        >>> locator.intersections_bf()
+        [(1, 4), (2, 3)]
+        >>>
+        """
+        n_segments = len(self.data)
+        hits = []
+        for i in xrange(n_segments-1):
+            seg_i = self.data[i]
+            for j in xrange(i+1, n_segments):
+                if seg_i.intersect(self.data[j]):
+                    hits.append((i,j))
+        return hits
+
+
+
+
 
 
 class Polyline_Shapefile_SegmentLocator(object):
@@ -401,3 +436,4 @@ if __name__ == '__main__':
 
     SG = SegmentLocator(segs)
     grid = SG.grid
+
