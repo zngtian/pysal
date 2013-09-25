@@ -1,6 +1,7 @@
 import pysal as ps
 import scipy.spatial.distance as DISTANCE
 from  scipy.spatial import cKDTree as CKDTREE
+from pysal.common import stats
 
 
 
@@ -50,6 +51,7 @@ class PointsCollection(object):
         self._density = None
         self._mbr = None
         self._mtd = None
+        self._kdtree = None
         window = self.set_window(window)
         self.points = points
         self.locator = ps.cg.locators.PointLocator([ps.cg.shapes.Point(p) for
@@ -100,6 +102,16 @@ class PointsCollection(object):
 
     mtd = property(get_max_theoretical_distance)
 
+    def get_kdtree(self):
+        if self._kdtree is None:
+            self._kdtree = CKDTREE(self.points)
+        return self._kdtree
+
+    kdtree = property(get_kdtree)
+
+
+
+
 
 def g(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05,
         max_d=None):
@@ -123,6 +135,91 @@ def g(points, n_bins=10, delta=1.00001, permutations=99, pct=0.05,
 
     return d, ids, gd, bins
 
+
+
+
+def R(points, sampling_rate = 0.10, two_tailed=True, n_samples=99):
+    """
+    Clark and Evan's R statistic
+
+
+    Arguments
+    =========
+
+    points: nx2 array
+            point data
+
+    sampling_rate: float
+                   percentage of points to take for each random sample to
+                   avoid full intensive sampling
+    two_tailed: Boolean
+                True: null is CSR
+                False: deviations from 0 indicate which tail of the
+                distribution is used to calculate p-vaues
+    n_samples: int
+               Number of samples to take to avoid full intensive sampling
+
+    """
+    if not isinstance(points, PointsCollection):
+        points = PointsCollection(points)
+
+    e_d = 1./ (2 * np.sqrt(points.density)) # expected value
+    nn_query = points.kdtree.query(points.points, k=2)
+    nn_distances = nn_query[0][:,1]
+    mean_d = nn_distances.mean()
+    # Bailey and Gatrell, 1995, p 100)
+    var_d = (4 - np.pi) / (4 * np.pi * points.density * points.n) 
+
+    value = mean_d / e_d
+    z = mean_d - e_d
+    z /= np.sqrt(var_d)
+    if two_tailed:
+        p = 1 - stats.norm.cdf(np.abs(z)) 
+        p *= 2.
+    else:
+        if z <= 0:
+            p = stats.norm.cdf(z)
+        else:
+            p = 1 - stats.norm.cdf(z)
+
+    results = {}
+    results['mean[nnd]'] = mean_d
+    results['R'] = value
+    results['E[nnd]'] = e_d
+    results['V[nnd]'] = var_d
+    results['z[nnd]'] = z
+    results['p-value[nnd]'] = p
+    results['two_tailed'] = two_tailed
+
+    # random sampling to minimize dependence of nnd
+    # See http://www.seas.upenn.edu/~ese502/#notebook Chapter 3
+
+    m = np.int(sampling_rate * points.n) 
+    results['m'] = m
+    var_md = (4 - np.pi) / (4 * np.pi * points.density * m) 
+    z_values = np.zeros((n_samples,1))
+    # random sample of nn_distances
+    for sample in xrange(n_samples):
+        np.random.shuffle(nn_distances)
+        mean_md = nn_distances[0:m].mean()
+        z_values[sample] = mean_md
+    z_values = (z_values - e_d) / np.sqrt(var_md)
+    results['z_values'] = z_values
+    z_values_mean = z_values.mean()
+    results['z_mean'] = z_values_mean
+    if two_tailed:
+        p_r = 1 - stats.norm.cdf(np.abs(z_values_mean)) 
+        p_r *= 2.
+    else:
+        if z <= 0:
+            p_r = stats.norm.cdf(z_values_mean)
+        else:
+            p_r = 1 - stats.norm.cdf(z_values_mean)
+    results['p-value[sampled]'] = p_r
+    results['m'] = m
+    results['sampling_rate'] = sampling_rate
+
+    return results
 
 
 
