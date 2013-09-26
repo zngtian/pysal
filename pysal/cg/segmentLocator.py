@@ -47,10 +47,10 @@ class SegmentLocator(object):
         return possibles[numpy.argmin(distances)]
 
 
-    def intersections_bf(self):
+    def intersections(self):
         """
-        Brute force segment intersection
-
+        Find all segment intersections
+ 
         Example
         =======
         >>> segments = [[12,7,13,11],
@@ -64,9 +64,18 @@ class SegmentLocator(object):
         ...     tail = Point((segment[2], segment[3]))
         ...     segs.append(LineSegment(head, tail))
         >>> locator = SegmentLocator(segs)
-        >>> locator.intersections_bf()
+        >>> locator.intersections()
         [(1, 4), (2, 3)]
         >>>
+        """
+        return self._intersections_bf()
+
+
+
+    def _intersections_bf(self):
+        """
+        Brute force segment intersection
+
         """
         n_segments = len(self.data)
         hits = []
@@ -76,6 +85,51 @@ class SegmentLocator(object):
                 if seg_i.intersect(self.data[j]):
                     hits.append((i,j))
         return hits
+
+
+
+    def intersections_ps(self):
+        """
+        Plane sweep intersection detection
+
+        XXX INCOMPLETE
+        """
+
+        points2Segments = {}
+        eventPoints = set()
+        for i, segment in enuemrate(self.data):
+            coordsHead = segment.p1
+            coordsTail = segment.p2
+            if coordsHead not in points2Segments:
+                points2Segments[coordsHead] = []
+            if coordsTail not in points2Segments:
+                points2Segments[coordsHead] = []
+            points2Segments[coordsHead].append(i) 
+            points2Segments[coordsTail].append(i) 
+            eventPoints.add(coordsHead)
+            eventPoints.add(coordsTail)
+        eventPoints = list(s).sort()
+
+        segments = self.data
+
+        # first event
+        que = Node(eventPoints[0])
+        firstSegments = points2Segments[eventPoints[0]]
+        status = Node(firstSegments[0])
+
+        # populate the rest of the que
+        for pnt in eventPoints[1:]:
+            que.insert(pnt)
+
+        results = {}
+        results['que'] = que
+        results['status'] = status
+        results['segments' ] = segments
+        return results
+
+
+
+
 
 
 
@@ -416,6 +470,89 @@ def binSizeTest():
             qps = test_grid(bins, segs, qpts)
             results[row, col] = qps
     return results
+
+
+# prototype of binary tree for segment intersection tests
+
+class Node:
+    """ """
+    def __init__(self, data):
+        self.left = None
+        self.right = None
+        self.data = data
+
+    def insert(self, data):
+
+        if data < self.data:
+            if self.left is None:
+                self.left = Node(data)
+            else:
+                self.left.insert(data)
+        else:
+            if self.right is None:
+                self.right = Node(data)
+            else:
+                self.right.insert(data)
+
+    def lookup(self, data, parent=None):
+        if data < self.data:
+            if self.left is None:
+                return None, None
+            return self.left.lookup(data, self)
+        else:
+            return self, parent
+
+    def children_count(self):
+        cnt = 0
+        if self.left:
+            cnt += 1
+        if self.right:
+            cnt += 1
+        return cnt
+
+    def delete(self, data):
+        node, parent = self.lookup(data)
+        if node is not None:
+            children_count = node.children_count()
+            if children_count == 0:
+                if parent.left is node:
+                    parent.left = None
+                else:
+                    parent.right = NOne
+                del node
+            elif children_count == 1:
+                if node.left:
+                    n = node.left
+                else:
+                    n = node.right
+                if parent:
+                    if parent.left is node:
+                        parent.left = n
+                    else:
+                        parent.right = n
+                del node
+            else:
+                parent = node
+                successor = node.right
+                while successor.left:
+                    parent = successor
+                    successor = successor.left
+                node.data = successor.data
+                if parent.left == successor:
+                    parent.left = successor.right
+                else:
+                    parent.right = successor.right
+
+    def print_tree(self):
+        if self.left:
+            self.left.print_tree()
+        print self.data
+        if self.right:
+            self.right.print_tree()
+
+
+
+
 
 if __name__ == '__main__':
     import pylab
