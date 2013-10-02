@@ -551,6 +551,145 @@ class Node:
             self.right.print_tree()
 
 
+def ccw(p0,p1,p2):
+    """
+    tests if in going from p0->p1->p2 direction is counter-clocwise
+
+
+    Parameters
+    ==========
+    p0: point (tuple or list)
+
+    p1: point (tuple or list)
+
+    p2: point (tuple or list)
+
+
+
+
+
+    Returns
+    =======
+    
+    0: when p2 is on the line between p0 and p1
+    1: when p1 is on the line between p0 and p2 or p2 is to the left of (p0,p1)
+    -1: when p0 is between p1 and p2
+
+
+    Notes
+    =====
+    From Sedgwick, R. (1992) Algorithms in C++. Addison Wesley.  p 350.
+
+    """
+    x=0
+    y=1
+    dx1 = p1[x] - p0[x]
+    dy1 = p1[y] - p0[y]
+    dx2 = p2[x] - p0[x]
+    dy2 = p2[y] - p0[y]
+
+    if dx1*dy2 > dy1*dx2:
+        return 1
+    if dx1*dy2 < dy1*dx2:
+        return -1
+    if (( dx1*dx2 <0) or (dy1*dy2 < 0)):
+        return -1
+    if ((dx1*dx1+dy1*dy1) < (dx2*dx2+dy2*dy2)):
+        return 1
+
+    return 0
+
+
+def intersect(seg1, seg2):
+    """
+    Test if two line segments intersect
+
+    Parameters
+    ==========
+
+    seg1: segment (pair of points)
+
+    seg2: segment (pair of points)
+
+
+    Returns
+    =======
+
+    1: if segments intersect
+
+    0: if segments do not intersect
+
+    >>> seg1 = [ (0,0), (5,4) ]
+    >>> seg2 = [ (0,6), (7,0) ]
+    >>> seg3 = [ (0,6), (0,10) ]
+    >>> intersect(seg1, seg2)
+    1
+    >>> intersect(seg2, seg3)
+    1
+    >>> intersect(seg1, seg3)
+    0
+
+    """
+    a = ccw(seg1[0], seg1[1], seg2[0])  
+    b = ccw(seg1[0], seg1[1], seg2[1])
+    c = ccw(seg2[0], seg2[1], seg1[0])
+    d = ccw(seg2[0], seg2[1], seg1[1])
+    return (a*b <= 0) * (c*d <= 0)
+
+
+
+def pointOnSegment(point, segment):
+    a,b = segment
+    if ccw(a,b,point) == 0:
+        return 1
+    return 0
+
+
+def intersectionPoint(seg1, seg2):
+    p1,p2 = seg1
+    p3,p4 = seg2
+    x=0
+    y=1
+    d = 1.0 * (p1[x]-p2[x])*(p3[y]-p4[y]) - \
+            (p1[y]-p2[y])*(p3[x]-p4[x])
+
+    if d == 0:
+        return None
+    
+    xi = ((p3[x]-p4[x])*(p1[x]*p2[y]-p1[y]*p2[x]) - \
+            (p1[x]-p2[x]) * (p3[x]*p4[y]-p3[y]*p4[x])) / d
+    yi = ((p3[y]-p4[y])*(p1[x]*p2[y]-p1[y]*p2[x]) - \
+            (p1[y]-p2[y]) * (p3[x]*p4[y]-p3[y]*p4[x])) / d
+    return (xi,yi)
+
+
+
+
+from heapq import heappush, heappop, heapify
+
+
+class BinaryHeap:
+    """ """
+    def __init__(self):
+        self.heap_list = []
+
+    def insert(self, element):
+        self.heap_list.append(element)
+        heapify(self.heap_list)
+
+    def remove(self, element):
+        if element in self.heap_list:
+            self.heap_list.remove(element)
+            heapify(self.heap_list)
+
+    def popMin(self):
+        return heappop(self.heap_list)
+
+    def order(self):
+        tmp = [ self.popMin() for i in range(len(self.heap_list)) ]
+        self.heap_list = tmp[:]
+        heapify(self.heap_list)
+        return tmp
 
 
 
@@ -573,4 +712,165 @@ if __name__ == '__main__':
 
     SG = SegmentLocator(segs)
     grid = SG.grid
+
+
+    #bh = BinaryHeap()
+    #alist = [9, 6, 5, 2, 3]
+    #bh.buildHeap(alist)
+
+    heap = []
+
+    # line segments
+    segs = [
+            [(3,11), (9,10)],
+            [(4,10), (5,12) ],
+            [(6,9), (9,7)],
+            [(3,3), (8,9)],
+            [(12,7), (12,11)] ]
+    pnts = []
+    s2p ={}
+    p2s = {}
+    l2s = {} # left to segment bridge
+    r2s = {} # right to segment bridge
+    i2segs = {}
+    for i,seg in enumerate(segs):
+        seg.sort() # sort points by x coord
+        h,t = seg
+        i2segs[i] = seg
+        pnts.extend(seg)
+        if h not in p2s:
+            p2s[h] = []
+        if t not in p2s:
+            p2s[t] = []
+        if h not in l2s:
+            l2s[h] = []
+        l2s[h].append(i)
+        if t not in r2s:
+            r2s[t] = []
+        r2s[t].append(i)
+        p2s[h].append(i)
+        p2s[t].append(i)
+        s2p[i] = h,t
+
+    heapify(pnts)
+    #bh = BinaryHeap()
+    #bh.buildHeap(pnts)
+
+    status = []
+
+    intersections =  {} 
+    left = {} 
+    right = {} 
+    y2p = {}
+
+
+    onstatus = set()
+    s = BinaryHeap() # status
+    q = BinaryHeap() # event que
+    for pnt in pnts:
+        q.insert(pnt)
+
+    while q.heap_list:
+        event_point = q.popMin()
+        print 'event_point: ', event_point
+        entering = set() 
+        if event_point in l2s:
+            for segment in l2s[event_point]:
+                entering.add(segment)
+        leaving = set()
+        if event_point in r2s:
+            for segment in r2s[event_point]:
+                leaving.add(segment)
+        print 'leaving: ', leaving
+        print 'entering: ', entering
+        # get segments on status that contain event point
+        ep_s = [ i for i in onstatus if pointOnSegment(event_point, segs[i]) ]
+        l_u_s = leaving.union(ep_s)
+        e_u_s = entering.union(ep_s)
+        uels = l_u_s.union(e_u_s)
+        print 'uels: ', uels
+        print 'lus: ', l_u_s
+        print 'eus: ', e_u_s
+        if len(uels) > 1:
+            print event_point, ' is an intersecting point'
+            print uels
+        for segment in l_u_s:
+            onstatus.remove(segment)
+        for segment in e_u_s:
+            onstatus.add(segment)
+
+        status = BinaryHeap()
+        for i in onstatus:
+            segment = i2segs[i]
+            x,y = segment[0]
+            key = (y,x,i)
+            status.insert(key)
+
+        
+        if e_u_s:
+            print e_u_s
+            # get order of segments of status
+            order = [i[-1] for i in status.order()]
+            # find bottom most segment of those entering on p or containing p
+            # on status
+            bottom_most = [ i for i in order if i in e_u_s][0] 
+            if bottom_most:
+                # check if bottom_most has a neighbor on the status below it
+                bm_index = order.index(bottom_most)
+                if bm_index > 0:
+                    neighbor = order[bm_index-1]
+                    si = i2segs[bottom_most]
+                    sj = i2segs[neighbor]
+                    if intersect(si, sj):
+                        pair = [bottom_most,neighbor]
+                        pair.sort()
+                        ip = intersectionPoint(si,sj)
+                        intersections[tuple(pair)] = ip
+                        if ip[1] > event_point[1] or (ip[1]==event_point[1]
+                                and ip[0] > event_point[0]):
+                            q.remove(ip) # no dupes
+                            q.insert(ip)
+
+
+            # find top most segment of those entering on the status or contain
+            # p on the status
+            top_most = [ i for i in order if i in e_u_s][-1]
+            if top_most:
+                # check if top_most has a neighbor on the status above it
+                tm_index = order.index(top_most)
+                if order[-1] != order[tm_index]:
+                    neighbor = order[tm_index + 1]
+                    si = i2segs[top_most]
+                    sj = i2segs[neighbor]
+                    if intersect(si, sj):
+                        pair = [top_most, neighbor]
+                        pair.sort()
+                        ip = intersectionPoint(si,sj)
+                        intersections[tuple(pair)] = ip
+                        if ip[1] > event_point[1] or (ip[1]==event_point[1]
+                                and ip[0] > event_point[0]):
+                            q.remove(ip) # no dupes
+                            q.insert(ip)
+        else:
+            # find new event using bottom and top neighbors of p on status
+            order = [ i[-1] for i in status.order() ]
+            ys = numpy.array([i2segs[i][0][1] for i in order])
+            bottom = numpy.nonzero(ys<=event_point[1])[0]
+            top = numpy.nonzero(ys > event_point[1])[0]
+            if bottom and top:
+                si = i2segs[bottom[-1]]
+                sj = i2segs[top[0]]
+                if si != sj and intersect(si,sj):
+                    ip = intersectionPoint(si,sj)
+                    if ip[1] > event_point[1] or (ip[1]==event_point[1]
+                                and ip[0] > event_point[0]):
+                            q.remove(ip) # no dupes
+                            q.insert(ip)
+
+
+        print 'status: ', onstatus
+        print '\n\n'
+
+        #raw_input('here')
+
 
