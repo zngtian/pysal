@@ -27,7 +27,82 @@ import urllib2 as urllib
 import copy
 import numpy as np
 
-def block(arg_dict):
+def wmd_reader(fileName):
+    """
+
+    Examples
+    --------
+    >>> import wmd
+    >>> wr = wmd.wmd_reader('w1rook.wmd')
+    wmd_reader failed:  w1rook.wmd
+    >>> wr = wmd.wmd_reader('wrook1.wmd')
+    >>> wr.neighbors[2]
+    [0, 1, 3, 4]
+    """
+
+    try:
+        meta_data = _uri_reader(fileName)
+    except:
+        fp = open(fileName)
+        meta_data = json.load(fp)
+        fp.close()
+    global fullmeta
+    fullmeta = {}
+    fullmeta['root'] =  copy.deepcopy(meta_data)
+    w = _wmd_parser(meta_data)
+    return w
+
+class WMD(ps.W):
+    """Weights Meta Data Class"""
+    def __init__(self, neighbors=None,  weights=None, id_order=None):
+        self.meta_data = {}
+        super(WMD, self).__init__(neighbors, weights, id_order)
+
+    # override transform property to record any post-instantiation
+    # transformations in meta data
+
+    @ps.W.transform.setter
+    def transform(self, value):
+        super(WMD, WMD).transform.__set__(self, value)
+        self.meta_data['transform'] = self._transform
+
+    def write(self, fileName, data=False):
+        """
+
+        Examples
+        --------
+        >>> import wmd
+        >>> wr = wmd.wmd_reader('w1rook.wmd')
+        wmd_reader failed:  w1rook.wmd
+        >>> wr = wmd.wmd_reader('wrook1.wmd')
+        >>> wr.write('wr1.wmd')
+        >>> wr1 = wmd.wmd_reader('wr1.wmd')
+        >>> wr.neighbors[2]
+        [0, 1, 3, 4]
+        >>> wr1.neighbors[2]
+        [0, 1, 3, 4]
+        >>>
+
+        """
+        _wmd_writer(self, fileName, data=data)
+
+######################### Private functions #########################
+    
+def _wmd_writer(wmd_object, fileName, data=False):
+    try:
+        with open(fileName, 'w') as f:
+            if data:
+                wmd_object.meta_data['data'] = {}
+                wmd_object.meta_data['data']['weights'] = wmd_object.weights
+                wmd_object.meta_data['data']['neighbors'] = wmd_object.neighbors
+            json.dump(wmd_object.meta_data,
+                    f,
+                    indent=4,
+                    separators=(',', ': '))
+    except:
+        print 'wmd_writer failed.'
+
+def _block(arg_dict):
     """
     General handler for block weights
 
@@ -63,8 +138,7 @@ def block(arg_dict):
 
     return w
 
-
-def contiguity(arg_dict):
+def _contiguity(arg_dict):
     """
     General handler for building contiguity weights from shapefiles
 
@@ -112,8 +186,7 @@ def contiguity(arg_dict):
     w.meta_data['parameters'] = parameters
     return w
 
-
-def kernel(arg_dict):
+def _kernel(arg_dict):
     """
     General handler for building kernel based weights from shapefiles
 
@@ -165,8 +238,7 @@ def kernel(arg_dict):
     w.meta_data['parameters'] = arg_dict['parameters']
     return w
 
-
-def distance(arg_dict):
+def _distance(arg_dict):
     """
     General handler for distance based weights obtained from shapefiles
     """
@@ -203,7 +275,7 @@ def distance(arg_dict):
         w.meta_data['parameters'] = arg_dict['parameters']
         return w
 
-def higher_order(arg_dict):
+def _higher_order(arg_dict):
     wmd = arg_dict['wmd']
     order = 2
     if 'parameters' in arg_dict:
@@ -222,7 +294,7 @@ def higher_order(arg_dict):
 
     return w
 
-def intersection(arg_dict):
+def _intersection(arg_dict):
     #wmd = arg_dict['wmd']
     w1 = arg_dict['input1']['data1']['uri']
     w2 = arg_dict['input1']['data2']['uri']
@@ -230,7 +302,7 @@ def intersection(arg_dict):
     w = WMD(w.neighbors, w.weights)
     return w
 
-def geojsonf(arg_dict):
+def _geojsonf(arg_dict):
     """
     Handler for local geojson files
     """
@@ -248,70 +320,37 @@ def geojsonf(arg_dict):
         w.meta_data["transform"] = w.transform
         return w
 
-
 # wrapper dict that maps specific weights types to a handler function that
 # builds the specific weights instance
 WEIGHT_TYPES = {}
-WEIGHT_TYPES['rook'] = contiguity
-WEIGHT_TYPES['queen'] = contiguity
-WEIGHT_TYPES['akernel'] = kernel
-WEIGHT_TYPES['kernel'] = kernel
-WEIGHT_TYPES['knn'] = distance
-WEIGHT_TYPES['higher_order'] = higher_order
-WEIGHT_TYPES['block'] = block
-WEIGHT_TYPES['intersection'] = intersection
+WEIGHT_TYPES['rook'] = _contiguity
+WEIGHT_TYPES['queen'] = _contiguity
+WEIGHT_TYPES['akernel'] = _kernel
+WEIGHT_TYPES['kernel'] = _kernel
+WEIGHT_TYPES['knn'] = _distance
+WEIGHT_TYPES['higher_order'] = _higher_order
+WEIGHT_TYPES['block'] = _block
+WEIGHT_TYPES['intersection'] = _intersection
 #WEIGHT_TYPES['queen_geojsonf'] = geojsonf
 #WEIGHT_TYPES['geojsons'] = geojsons
 
 
-
-
-def uri_reader(uri):
+def _uri_reader(uri):
     j = json.load(urllib.urlopen(uri))
     return j
 
-def wmd_read_only(fileName):
+def _wmd_read_only(fileName):
     try:
-        meta_data = uri_reader(fileName)
+        meta_data = _uri_reader(fileName)
     except:
         fp = open(fileName)
         meta_data = json.load(fp)
         fp.close()
     return meta_data
 
-
-def wmd_reader(fileName):
-    try:
-        meta_data = uri_reader(fileName)
-    except:
-        fp = open(fileName)
-        meta_data = json.load(fp)
-        fp.close()
-    global fullmeta
-    fullmeta = {}
-    fullmeta['root'] =  copy.deepcopy(meta_data)
-    w = wmd_parser(meta_data)
-    return w
-
-
-def wmd_writer(wmd_object, fileName, data=False):
-    #print json.dumps(wmd_object.meta_data,
-    #        indent=4,
-    #        separators=(',', ': '))
-    fp = open(fileName, 'w')
-    if data:
-        wmd_object.meta_data['data'] = {}
-        wmd_object.meta_data['data']['weights'] = wmd_object.weights
-        wmd_object.meta_data['data']['neighbors'] = wmd_object.neighbors
-    json.dump(wmd_object.meta_data,
-            fp,
-            indent=4,
-            separators=(',', ': '))
-    fp.close()
-
-
-
-def wmd_parser(wmd_object):
+def _wmd_parser(wmd_object):
+    if 'root' in wmd_object:
+        wmd_object = wmd_object['root']
     weight_type = wmd_object['weight_type'].lower()
     for key in wmd_object['input1']:
         #print key
@@ -319,9 +358,9 @@ def wmd_parser(wmd_object):
             #      call wmd_reader
             uri = wmd_object['input1'][key]['uri']
 
-            meta_data = wmd_read_only(uri)
+            meta_data = _wmd_read_only(uri)
             fullmeta[uri] = copy.deepcopy(meta_data) #add full metadata
-            wmd = wmd_parser(meta_data)
+            wmd = _wmd_parser(meta_data)
             wmd_object['input1'][key]['uri'] = wmd
         else:
             # handle distributed files
@@ -331,7 +370,7 @@ def wmd_parser(wmd_object):
                 #print ' tmp: ', tmp
                 wmd_object['input1'][key]['uri'] = uri
             except:
-                download_shapefiles(uri)
+                _download_shapefiles(uri)
                 uri = uri.split("/")[-1]
                 wmd_object['input1'][key]['uri'] = uri # use local copy
 
@@ -342,41 +381,9 @@ def wmd_parser(wmd_object):
     else:
         print 'Unsupported weight type: ', weight_type
 
-
     return wmd
 
-def getW(inputDataObject, weight_type):
-
-    # check input type
-    itype = inputDataObject['type']
-    if itype == 'prov':
-        #      call wmd_reader
-        uri = inputDataObject['uri']
-        meta_data = wmd_read_only(uri)
-        wmd = wmd_parser(meta_data)
-
-    else:
-        # handle distributed files
-        uri = inputDataObject['uri']
-        try:
-            tmp = open(uri) #local file
-            #print ' tmp: ', tmp
-            inputDataObject['uri'] = uri
-        except:
-            download_shapefiles(uri) #download from remote
-            uri = uri.split("/")[-1]
-            inputDataObject['uri'] = uri # use local copy
-        # check for weight_type
-        if weight_type in WEIGHT_TYPES:
-            #print weight_type
-            wmd  = WEIGHT_TYPES[weight_type](wmd_object)
-        else:
-            print 'Unsupported weight type: ', weight_type
-
-    return wmd
-
-def download_shapefiles(file_name):
-
+def _download_shapefiles(file_name):
     file_parts = file_name.split("/")
     file_prefix = file_parts[-1].split(".")[0]
     exts = [ ".shp", ".dbf", ".shx" ]
@@ -404,25 +411,7 @@ def download_shapefiles(file_name):
             status = status + chr(8)* (len(status)+1)
         #print status, f.close()
 
-
-class WMD(ps.W):
-    """Weights Meta Data Class """
-    def __init__(self, neighbors=None,  weights=None, id_order=None):
-        self.meta_data = {}
-        super(WMD, self).__init__(neighbors, weights, id_order)
-
-
-    # override transform property to record any post-instantiation
-    # transformations in meta data
-
-    @ps.W.transform.setter
-    def transform(self, value):
-        super(WMD, WMD).transform.__set__(self, value)
-        self.meta_data['transform'] = self._transform
-
-
 if __name__ == '__main__':
-
 
     # distributed file
     w1 = wmd_reader("wrook1.wmd")
@@ -454,18 +443,18 @@ if __name__ == '__main__':
 #    print "full metadata is listed below: \n", fullmeta
     # r2 = wmd_reader('chain2.wmd')
 
-    taz_int = wmd_reader("taz_intersection.wmd")
+    #taz_int = wmd_reader("taz_intersection.wmd")
 
 
 
     ## intersection between queen and block weights
-    #import numpy as np
-    #w = ps.lat2W(4,4)
-    #block_variable = np.ones((w.n,1))
-    #block_variable[:8] = 0
-    #w_block = ps.weights.util.regime_weights(block_variable)
+    import numpy as np
+    w = ps.lat2W(4,4)
+    block_variable = np.ones((w.n,1))
+    block_variable[:8] = 0
+    w_block = ps.weights.util.regime_weights(block_variable)
 
-    #w_intersection = ps.w_intersection(w, w_block)
+    w_intersection = ps.w_intersection(w, w_block)
 
 
     ## with Columbus example using EW as the block and queen
@@ -479,5 +468,5 @@ if __name__ == '__main__':
 
     #blk = wmd_reader('block2.wmd')
 
-    #taz_int = wmd_reader("http://spatial.csf.asu.edu/taz_intersection.wmd")
+    taz_int = wmd_reader("http://spatial.csf.asu.edu/taz_intersection.wmd")
 
