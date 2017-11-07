@@ -10,6 +10,7 @@ import doctest
 import math
 from warnings import warn
 from sphere import arcdist
+import numpy as np
 
 __all__ = ['Point', 'LineSegment', 'Line', 'Ray', 'Chain', 'Polygon',
            'Rectangle', 'asShape']
@@ -20,6 +21,8 @@ def asShape(obj):
     Returns a pysal shape object from obj.
     obj must support the __geo_interface__.
     """
+    if isinstance(obj, (Point, LineSegment, Line, Ray, Chain, Polygon)):
+        return obj
     if hasattr(obj, '__geo_interface__'):
         geo = obj.__geo_interface__
     else:
@@ -35,8 +38,15 @@ def asShape(obj):
         raise NotImplementedError(
             "%s is not supported at this time." % geo_type)
 
+class Geometry(object):
+    """
+    A base class to help implement is_geometry and make geometric types
+    extendable.
+    """
+    def __init__(self):
+        pass
 
-class Point(object):
+class Point(Geometry):
     """
     Geometric class for point objects.
 
@@ -319,7 +329,7 @@ class Point(object):
         >>> Point((0,1))
         (0.0, 1.0)
         """
-        return self.__loc.__repr__()
+        return str(self)
 
     def __str__(self):
         """
@@ -340,9 +350,10 @@ class Point(object):
         '(1.0, 3.0)'
         """
         return str(self.__loc)
+        return "POINT ({} {})".format(*self.__loc)
 
 
-class LineSegment(object):
+class LineSegment(Geometry):
     """
     Geometric representation of line segment objects.
 
@@ -394,6 +405,8 @@ class LineSegment(object):
 
     def __str__(self):
         return "LineSegment(" + str(self._p1) + ", " + str(self._p2) + ")"
+        return "LINESTRING ({} {}, {} {})".format(self._p1[0], self._p1[1], 
+                                                  self._p2[0], self._p2[1])
 
     def __eq__(self, other):
         """
@@ -771,7 +784,7 @@ class LineSegment(object):
         return self._line
 
 
-class VerticalLine:
+class VerticalLine(Geometry):
     """
     Geometric representation of verticle line objects.
 
@@ -848,7 +861,7 @@ class VerticalLine:
         return float('nan')
 
 
-class Line:
+class Line(Geometry):
     """
     Geometric representation of line objects.
 
@@ -977,7 +990,7 @@ class Ray:
         self.p = second_p
 
 
-class Chain(object):
+class Chain(Geometry):
     """
     Geometric representation of a chain, also known as a polyline.
 
@@ -1013,15 +1026,23 @@ class Chain(object):
         else:
             self._vertices = [vertices]
         self._reset_props()
-
+    
     @classmethod
     def __from_geo_interface__(cls, geo):
-        verts = [Point(pt) for pt in geo['coordinates']]
+        if geo['type'].lower() == 'linestring':
+            verts = [Point(pt) for pt in geo['coordinates']]
+        elif geo['type'].lower() == 'multilinestring':
+            verts = [map(Point, part) for part in geo['coordinates']]
+        else:
+            raise TypeError('%r is not a Chain'%geo)
         return cls(verts)
 
     @property
     def __geo_interface__(self):
-        return {'type': 'LineString', 'coordinates': self.vertices}
+        if len(self.parts) == 1:
+            return {'type': 'LineString', 'coordinates': self.vertices}
+        else:
+            return {'type': 'MultiLineString', 'coordinates': self.parts}
 
     def _reset_props(self):
         """
@@ -1167,7 +1188,7 @@ class Chain(object):
         return [[LineSegment(a, b) for (a, b) in zip(part[:-1], part[1:])] for part in self._vertices]
 
 
-class Ring(object):
+class Ring(Geometry):
     """
     Geometric representation of a Linear Ring
 
@@ -1277,9 +1298,10 @@ class Ring(object):
 
             A = 0.0
             for i in xrange(N - 1):
-                A += (x[i] * y[i + 1] - x[i + 1] * y[i])
-            A = A / 2.0
-            self._area = A
+                A += (x[i] + x[i + 1]) * \
+                    (y[i] - y[i + 1])
+            A = A * 0.5
+            self._area = -A
         return self._area
 
     @property
@@ -1318,8 +1340,61 @@ class Ring(object):
             self._centroid = Point((cx, cy))
         return self._centroid
 
+    def contains_point(self, point):
+        """
+        Point containment using winding number
 
-class Polygon(object):
+        Implementation based on: http://www.engr.colostate.edu/~dga/dga/papers/point_in_polygon.pdf
+        """
+
+        x, y = point
+
+        # bbox check
+        if x < self.bounding_box.left:
+            return False
+        if x > self.bounding_box.right:
+            return False
+        if y < self.bounding_box.lower:
+            return False
+        if y > self.bounding_box.upper:
+            return False
+
+
+        rn = len(self.vertices)
+        xs = [ self.vertices[i][0] - point[0] for i in xrange(rn) ]
+        ys = [ self.vertices[i][1] - point[1] for i in xrange(rn) ]
+        w = 0
+        for i in xrange(len(self.vertices) - 1):
+            yi = ys[i]
+            yj = ys[i+1]
+            xi = xs[i]
+            xj = xs[i+1]
+            if yi*yj < 0:
+                r = xi + yi * (xj-xi) / (yi - yj)
+                if r > 0:
+                    if yi < 0:
+                        w += 1
+                    else:
+                        w -= 1
+            elif yi==0 and xi > 0:
+                if yj > 0:
+                    w += 0.5
+                else:
+                    w -= 0.5
+            elif yj == 0 and xj > 0:
+                if yi < 0:
+                    w += 0.5
+                else:
+                    w -= 0.5
+        if w==0:
+            return False
+        else:
+            return True
+
+
+
+
+class Polygon(Geometry):
     """
     Geometric representation of polygon objects.
 
@@ -1652,25 +1727,23 @@ class Polygon(object):
         >>> p = Polygon([Point((0,0)), Point((4,0)), Point((4,5)), Point((2,3)), Point((0,5))])
         >>> p.contains_point((3,3))
         1
-        >>> p.contains_point((0,5))
+        >>> p.contains_point((0,6))
         0
-        >>> p.contains_point((2,3))
-        0
+        >>> p.contains_point((2,2.9))
+        1
         >>> p.contains_point((4,5))
         0
         >>> p.contains_point((4,0))
-        1
+        0
         >>>
 
         Handles holes
 
-        >>> p = Polygon([Point((0, 0)), Point((10, 0)), Point((10, 10)), Point((0, 10))], [Point((1, 2)), Point((2, 2)), Point((2, 1)), Point((1, 1))])
+        >>> p = Polygon([Point((0, 0)), Point((0, 10)), Point((10, 10)), Point((10, 0))], [Point((2, 2)), Point((4, 2)), Point((4, 4)), Point((2, 4))])
+        >>> p.contains_point((3.0,3.0))
+        False
         >>> p.contains_point((1.0,1.0))
-        0
-        >>> p.contains_point((2.0,2.0))
-        1
-        >>> p.contains_point((10,10))
-        0
+        True
         >>>
 
 
@@ -1680,31 +1753,19 @@ class Polygon(object):
         results
         """
 
-        # ray from point to just outside left edge of bb
-        left = self.bounding_box.left - 0.000001
-        y = point[1]
-        right = point[0]
-        cn = 0
-        verts = self.vertices
-        c = Point((left, y))
-        d = Point((right, y))
-        ray = LineSegment(c, d)
-        for i in xrange(-1, len(self.vertices) - 1):
-            a = verts[i]
-            b = verts[i + 1]
-            ab = LineSegment(a, b)
-            ac = LineSegment(a, c)
-            bc = LineSegment(b, c)
-            if ac.is_ccw(d) == bc.is_ccw(d):
-                pass
-            elif ab.is_ccw(c) == ab.is_ccw(d):
-                pass
-            else:
-                cn += 1
-        return cn % 2
+        for ring in self._hole_rings:
+            if ring.contains_point(point):
+                return False
+
+        for ring in self._part_rings:
+            if ring.contains_point(point):
+                return True
+
+        return False
 
 
-class Rectangle:
+
+class Rectangle(Geometry):
     """
     Geometric representation of rectangle objects.
 
@@ -1906,7 +1967,7 @@ class Rectangle:
         return self.upper - self.lower
 
 
-_geoJSON_type_to_Pysal_type = {'point': Point, 'linestring': Chain,
+_geoJSON_type_to_Pysal_type = {'point': Point, 'linestring': Chain, 'multilinestring': Chain,
                                'polygon': Polygon, 'multipolygon': Polygon}
 import standalone  # moving this to top breaks unit tests !
 

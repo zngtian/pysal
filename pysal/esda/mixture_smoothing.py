@@ -24,9 +24,9 @@ class NP_Mixture_Smoother(object):
 
     Parameters
     ----------
-    e           : array (n, 1)
+    e           : array-like
                   event variable measured across n spatial units
-    b           : array (n, 1)
+    b           : array-like
                   population at risk variable measured across n spatial units
     k           : integer
                   a seed number to specify the number of subpopulations
@@ -41,25 +41,30 @@ class NP_Mixture_Smoother(object):
 
     Attributes
     ----------
-    e           : same as e in parameters
-    b           : same as b in parameters
+    e           : array
+                  same as e in parameters
+    b           : array
+                  same as b in parameters
     n           : integer
                   the number of observations
     w           : float
                   a global weight value, 1 devided by n
     k           : integer
                   the number of subpopulations
-    acc         : same as acc in parameters
-    numiter     : same as numiter in parameters
-    limit       : same as limit in parameters
-    p           : array (k, 1)
-                  the proportions of individual subpopulations
-    t           : array (k, 1)
-                  prior risks of individual subpopulations
-    r           : array (n, 1)
-                  estimated rate values
-    category    : array (n, 1)
-                  indices of subpopulations to which each observation belongs
+    acc         : float
+                  same as acc in parameters
+    numiter     : integer
+                  same as numiter in parameters
+    limit       : float
+                  same as limit in parameters
+    p           : array
+                  (k, 1), the proportions of individual subpopulations
+    t           : array
+                  (k, 1), prior risks of individual subpopulations
+    r           : array
+                  (n, 1), estimated rate values
+    category    : array
+                  (n, 1), indices of subpopulations to which each observation belongs
 
     Examples
     --------
@@ -111,8 +116,8 @@ class NP_Mixture_Smoother(object):
     """
 
     def __init__(self, e, b, k=50, acc=1.E-7, numiter=5000, limit=0.01):
-        self.e = e
-        self.b = b
+        self.e = np.asarray(e).flatten()
+        self.b = np.asarray(b).flatten()
         self.n = len(e)
         self.w = 1. / self.n
         self.k = k

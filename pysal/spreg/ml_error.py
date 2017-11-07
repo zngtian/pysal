@@ -2,12 +2,16 @@
 ML Estimation of Spatial Error Model
 """
 
-__author__ = "Luc Anselin luc.anselin@asu.edu, Serge Rey srey@asu.edu"
+__author__ = "Luc Anselin luc.anselin@asu.edu,\
+              Serge Rey srey@asu.edu, \
+              Levi Wolf levi.john.wolf@asu.edu"
 
 import numpy as np
 import numpy.linalg as la
+from scipy import sparse as sp
+from scipy.sparse.linalg import splu as SuperLU
 import pysal as ps
-from pysal.spreg.utils import RegressionPropsY, RegressionPropsVM
+from utils import RegressionPropsY, RegressionPropsVM
 import diagnostics as DIAG
 import user_output as USER
 import summary_output as SUMMARY
@@ -18,6 +22,7 @@ try:
     minimize_scalar_available = True
 except ImportError:
     minimize_scalar_available = False
+from .sputils import spdot, spfill_diagonal, spinv
 
 __all__ = ["ML_Error"]
 
@@ -26,7 +31,7 @@ class BaseML_Error(RegressionPropsY, RegressionPropsVM, REGI.Regimes_Frame):
 
     """
     ML estimation of the spatial error model (note no consistency
-    checks, diagnostics or constants added); Anselin (1988) [1]_
+    checks, diagnostics or constants added); Anselin (1988) [Anselin1988]_
 
     Parameters
     ----------
@@ -39,6 +44,8 @@ class BaseML_Error(RegressionPropsY, RegressionPropsVM, REGI.Regimes_Frame):
                    Spatial weights sparse matrix
     method       : string
                    if 'full', brute force calculation (full matrix expressions)
+                   if 'ord', Ord eigenvalue calculation
+                   if 'LU', LU decomposition for sparse matrices
     epsilon      : float
                    tolerance criterion in mimimize_scalar function and inverse_product
     regimes_att  : dictionary
@@ -145,12 +152,6 @@ class BaseML_Error(RegressionPropsY, RegressionPropsVM, REGI.Regimes_Frame):
     >>> "{0:.4f}".format(mlerr1.logll) #doctest: +SKIP
     '-4471.4071'
 
-    References
-    ----------
-
-    .. [1] Anselin, L. (1988) "Spatial Econometrics: Methods and Models".
-    Kluwer Academic Publishers. Dordrecht.
-
     """
 
     def __init__(self, y, x, w, method='full', epsilon=0.0000001, regimes_att=None):
@@ -163,26 +164,39 @@ class BaseML_Error(RegressionPropsY, RegressionPropsVM, REGI.Regimes_Frame):
         self.n, self.k = self.x.shape
         self.method = method
         self.epsilon = epsilon
-        W = w.full()[0]
+
+        #W = w.full()[0] #wait to build pending what is needed
+        #Wsp = w.sparse
 
         ylag = ps.lag_spatial(w, self.y)
         xlag = self.get_x_lag(w, regimes_att)
 
         # call minimizer using concentrated log-likelihood to get lambda
         methodML = method.upper()
-        if methodML in ['FULL', 'ORD']:
-            if methodML == 'FULL':
+        if methodML in ['FULL', 'LU', 'ORD']:
+            if methodML == 'FULL':  
+                W = w.full()[0]      # need dense here
                 res = minimize_scalar(err_c_loglik, 0.0, bounds=(-1.0, 1.0),
                                       args=(self.n, self.y, ylag, self.x,
                                             xlag, W), method='bounded',
                                       tol=epsilon)
+            elif methodML == 'LU':
+                I = sp.identity(w.n)
+                Wsp = w.sparse   # need sparse here
+                res = minimize_scalar(err_c_loglik_sp, 0.0, bounds=(-1.0,1.0),
+                                      args=(self.n, self.y, ylag, 
+                                            self.x, xlag, I, Wsp),
+                                      method='bounded', tol=epsilon)
+                W = Wsp
             elif methodML == 'ORD':
                 # check on symmetry structure
                 if w.asymmetry(intrinsic=False) == []:
                     ww = symmetrize(w)
-                    WW = ww.todense()
+                    WW = np.array(ww.todense())
                     evals = la.eigvalsh(WW)
+                    W = WW
                 else:
+                    W = w.full()[0]      # need dense here
                     evals = la.eigvals(W)
                 res = minimize_scalar(
                     err_c_loglik_ord, 0.0, bounds=(-1.0, 1.0),
@@ -190,7 +204,7 @@ class BaseML_Error(RegressionPropsY, RegressionPropsVM, REGI.Regimes_Frame):
                           xlag, evals), method='bounded',
                     tol=epsilon)
         else:
-            raise Exception, "{0} is an unsupported method".format(method)
+            raise Exception("{0} is an unsupported method".format(method))
 
         self.lam = res.x
 
@@ -226,16 +240,16 @@ class BaseML_Error(RegressionPropsY, RegressionPropsVM, REGI.Regimes_Frame):
         # variance-covariance matrix lambda, sigma
 
         a = -self.lam * W
-        np.fill_diagonal(a, 1.0)
-        ai = la.inv(a)
-        wai = np.dot(W, ai)
-        tr1 = np.trace(wai)
+        spfill_diagonal(a, 1.0)
+        ai = spinv(a)
+        wai = spdot(W, ai)
+        tr1 = wai.diagonal().sum()
 
-        wai2 = np.dot(wai, wai)
-        tr2 = np.trace(wai2)
+        wai2 = spdot(wai, wai)
+        tr2 = wai2.diagonal().sum()
 
-        waiTwai = np.dot(wai.T, wai)
-        tr3 = np.trace(waiTwai)
+        waiTwai = spdot(wai.T, wai)
+        tr3 = waiTwai.diagonal().sum()
 
         v1 = np.vstack((tr2 + tr3,
                         tr1 / self.sig2))
@@ -253,7 +267,6 @@ class BaseML_Error(RegressionPropsY, RegressionPropsVM, REGI.Regimes_Frame):
 
         self.vm = np.vstack((vv, vv1))
 
-        self._cache = {}
 
     def get_x_lag(self, w, regimes_att):
         if regimes_att:
@@ -270,7 +283,7 @@ class ML_Error(BaseML_Error):
 
     """
     ML estimation of the spatial lag model with all results and diagnostics;
-    Anselin (1988) [1]_
+    Anselin (1988) [Anselin1988]_
 
     Parameters
     ----------
@@ -283,7 +296,8 @@ class ML_Error(BaseML_Error):
                    Spatial weights sparse matrix
     method       : string
                    if 'full', brute force calculation (full matrix expressions)
-                   ir 'ord', Ord eigenvalue method
+                   if 'ord', Ord eigenvalue method
+                   if 'LU', LU sparse matrix decomposition
     epsilon      : float
                    tolerance criterion in mimimize_scalar function and inverse_product
     spat_diag    : boolean
@@ -427,12 +441,6 @@ class ML_Error(BaseML_Error):
     'MAXIMUM LIKELIHOOD SPATIAL ERROR (METHOD = FULL)'
 
 
-    References
-    ----------
-
-    .. [1] Anselin, L. (1988) "Spatial Econometrics: Methods and Models".
-    Kluwer Academic Publishers. Dordrecht.
-
     """
 
     def __init__(self, y, x, w, method='full', epsilon=0.0000001,
@@ -443,21 +451,18 @@ class ML_Error(BaseML_Error):
         USER.check_weights(w, y, w_required=True)
         x_constant = USER.check_constant(x)
         method = method.upper()
-        if method in ['FULL', 'ORD']:
-            BaseML_Error.__init__(self, y=y, x=x_constant,
-                                  w=w, method=method, epsilon=epsilon)
-            self.title = "MAXIMUM LIKELIHOOD SPATIAL ERROR" + \
-                " (METHOD = " + method + ")"
-            self.name_ds = USER.set_name_ds(name_ds)
-            self.name_y = USER.set_name_y(name_y)
-            self.name_x = USER.set_name_x(name_x, x)
-            self.name_x.append('lambda')
-            self.name_w = USER.set_name_w(name_w, w)
-            self.aic = DIAG.akaike(reg=self)
-            self.schwarz = DIAG.schwarz(reg=self)
-            SUMMARY.ML_Error(reg=self, w=w, vm=vm, spat_diag=spat_diag)
-        else:
-            raise Exception, "{0} is an unsupported method".format(method)
+        BaseML_Error.__init__(self, y=y, x=x_constant,
+                              w=w, method=method, epsilon=epsilon)
+        self.title = "MAXIMUM LIKELIHOOD SPATIAL ERROR" + \
+            " (METHOD = " + method + ")"
+        self.name_ds = USER.set_name_ds(name_ds)
+        self.name_y = USER.set_name_y(name_y)
+        self.name_x = USER.set_name_x(name_x, x)
+        self.name_x.append('lambda')
+        self.name_w = USER.set_name_w(name_w, w)
+        self.aic = DIAG.akaike(reg=self)
+        self.schwarz = DIAG.schwarz(reg=self)
+        SUMMARY.ML_Error(reg=self, w=w, vm=vm, spat_diag=spat_diag)
 
 
 def err_c_loglik(lam, n, y, ylag, x, xlag, W):
@@ -480,9 +485,32 @@ def err_c_loglik(lam, n, y, ylag, x, xlag, W):
     clik = nlsig2 - jacob
     return clik
 
+def err_c_loglik_sp(lam, n, y, ylag, x, xlag, I, Wsp):
+    # concentrated log-lik for error model, no constants, LU
+    if isinstance(lam, np.ndarray):
+        if lam.shape == (1,1):
+            lam = lam[0][0] #why does the interior value change?
+    ys = y - lam * ylag
+    xs = x - lam * xlag
+    ysys = np.dot(ys.T, ys)
+    xsxs = np.dot(xs.T, xs)
+    xsxsi = np.linalg.inv(xsxs)
+    xsys = np.dot(xs.T, ys)
+    x1 = np.dot(xsxsi, xsys)
+    x2 = np.dot(xsys.T, x1)
+    ee = ysys - x2
+    sig2 = ee[0][0] / n
+    nlsig2 = (n / 2.0) * np.log(sig2)
+    a = I - lam * Wsp
+    LU = SuperLU(a.tocsc())
+    jacob = np.sum(np.log(np.abs(LU.U.diagonal()))) 
+    # this is the negative of the concentrated log lik for minimization
+    clik = nlsig2 - jacob
+    return clik
+
 
 def err_c_loglik_ord(lam, n, y, ylag, x, xlag, evals):
-    # concentrated log-lik for error model, no constants, brute force
+    # concentrated log-lik for error model, no constants, eigenvalues
     ys = y - lam * ylag
     xs = x - lam * xlag
     ysys = np.dot(ys.T, ys)

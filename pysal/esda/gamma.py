@@ -5,15 +5,16 @@ Gamma index for spatial autocorrelation
 """
 __author__ = "Luc Anselin <luc.anselin@asu.edu>"
 
-import pysal
 import numpy as np
+from ..weights.spatial_lag import lag_spatial
+from .tabular import _univariate_handler 
 
 __all__ = ['Gamma']
 
 PERMUTATIONS = 999
 
 
-class Gamma:
+class Gamma(object):
     """Gamma index for spatial autocorrelation
 
 
@@ -25,12 +26,14 @@ class Gamma:
     w               : W
                       spatial weights instance
                       can be binary or row-standardized
-    operation       : attribute similarity function
-                      'c' cross product (default)
+    operation       : {'c', 's', 'a'}
+                      attribute similarity function where,
+                      'c' cross product
                       's' squared difference
                       'a' absolute difference
-    standardize     : standardize variables first
-                      'no' keep as is (default)
+    standardize     : {'no', 'yes'}
+                      standardize variables first
+                      'no' keep as is
                       'yes' or 'y' standardize to mean zero and variance one
     permutations    : int
                       number of random permutations for calculation of pseudo-p_values
@@ -41,22 +44,30 @@ class Gamma:
                    original variable
     w            : W
                    original w object
-    op           : attribute similarity function
-    stand        : standardization
+    op           : {'c', 's', 'a'}
+                   attribute similarity function, as per parameters
+                   attribute similarity function
+    stand        : {'no', 'yes'}
+                   standardization
     permutations : int
                    number of permutations
     gamma        : float
                    value of Gamma index
-    sim_g        : array (if permutations>0)
+    sim_g        : array
+                   (if permutations>0)
                    vector of Gamma index values for permuted samples
-    p_sim_g      : array (if permutations>0)
+    p_sim_g      : array
+                   (if permutations>0)
                    p-value based on permutations (one-sided)
                    null: spatial randomness
                    alternative: the observed Gamma is more extreme than under randomness
                    implemented as a two-sided test
-    mean_g       : average of permuted Gamma values
-    min_g        : minimum of permuted Gamma values
-    max_g        : maximum of permuted Gamma values
+    mean_g       : float
+                   average of permuted Gamma values
+    min_g        : float
+                   minimum of permuted Gamma values
+    max_g        : float
+                   maximum of permuted Gamma values
 
 
     Examples
@@ -64,7 +75,7 @@ class Gamma:
 
     use same example as for join counts to show similarity
 
-    >>> import numpy as np
+    >>> import pysal, numpy as np
     >>> w=pysal.lat2W(4,4)
     >>> y=np.ones(16)
     >>> y[0:8]=0
@@ -72,8 +83,8 @@ class Gamma:
     >>> g = pysal.Gamma(y,w)
     >>> g.g
     20.0
-    >>> g.g_z
-    3.1879280354548638
+    >>> round(g.g_z, 3)
+    3.188
     >>> g.p_sim_g
     0.0030000000000000001
     >>> g.min_g
@@ -86,8 +97,8 @@ class Gamma:
     >>> g1 = pysal.Gamma(y,w,operation='s')
     >>> g1.g
     8.0
-    >>> g1.g_z
-    -3.7057554345954791
+    >>> round(g1.g_z, 3)
+    -3.706
     >>> g1.p_sim_g
     0.001
     >>> g1.min_g
@@ -100,8 +111,8 @@ class Gamma:
     >>> g2 = pysal.Gamma(y,w,operation='a')
     >>> g2.g
     8.0
-    >>> g2.g_z
-    -3.7057554345954791
+    >>> round(g2.g_z, 3)
+    -3.706
     >>> g2.p_sim_g
     0.001
     >>> g2.min_g
@@ -114,8 +125,8 @@ class Gamma:
     >>> g3 = pysal.Gamma(y,w,standardize='y')
     >>> g3.g
     32.0
-    >>> g3.g_z
-    3.7057554345954791
+    >>> round(g3.g_z, 3)
+    3.706
     >>> g3.p_sim_g
     0.001
     >>> g3.min_g
@@ -132,13 +143,14 @@ class Gamma:
     >>> g4 = pysal.Gamma(y,w,operation=func)
     >>> g4.g
     20.0
-    >>> g4.g_z
-    3.1879280354548638
+    >>> round(g4.g_z, 3)
+    3.188
     >>> g4.p_sim_g
     0.0030000000000000001
 
     """
     def __init__(self, y, w, operation='c', standardize='no', permutations=PERMUTATIONS):
+        y = np.asarray(y).flatten()
         self.w = w
         self.y = y
         self.op = operation
@@ -161,10 +173,19 @@ class Gamma:
             p_sim_g = self.__pseudop(self.sim_g, self.g)
             self.p_sim_g = p_sim_g
             self.g_z = (self.g - self.mean_g) / np.std(self.sim_g)
+    
+    @property
+    def _statistic(self):
+        return self.g
+
+    @property
+    def  p_sim(self):
+        """new name to fit with Moran module"""
+        return self.p_sim_g
 
     def __calc(self, z, op):
         if op == 'c':     # cross-product
-            zl = pysal.lag_spatial(self.w, z)
+            zl = lag_spatial(self.w, z)
             g = (z * zl).sum()
         elif op == 's':   # squared difference
             zs = np.zeros(z.shape)
@@ -201,4 +222,8 @@ class Gamma:
         if psim > 0.5:
             psim = (self.permutations - larger + 1.) / (self.permutations + 1.)
         return psim
-
+   
+    @classmethod
+    def by_col(cls, df, cols, w=None, inplace=False, pvalue = 'sim', outvals = None, **stat_kws):
+        return _univariate_handler(df, cols, w=w, inplace=inplace, pvalue=pvalue,
+                outvals=outvals, stat=cls, swapname=cls.__name__.lower(), **stat_kws)

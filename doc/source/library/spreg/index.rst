@@ -25,5 +25,8 @@
    ml_error_regimes
    ml_lag
    ml_lag_regimes
+   sur
+   sur_error
+   sur_lag
 
 

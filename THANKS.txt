@@ -9,24 +9,50 @@ been left off, please email the "PySAL Developers List" <pysal-dev@googlegroups.
 
 Pedro Amaral
 Luc Anselin
+Jotham Apaloo
 Daniel Arribas-Bel
+Roger Bivand
 David C. Folch
+Forest Gregg
 Myunghwa Hwang
+Wei Kang
+Marynia Kolak
 Julia Koschinsky
 Jason Laura
 Xun Li
 Nicholas Malizia
 Mark McCann
+Taylor Oshan
 Serge Rey
 Charles R. Schmidt
+Skipper Seabold
+Alessandra Sozzi
 Philip Stephens
 Bohumil Svoma
 Ran Wei
 Andrew Winslow
+Levi Wolf
 Jing Yao
 Xinyue Ye
+jo-tham
+sebastic
+andy-esch
+calebrob6
+fnorf
+mylons-tcc
+dnadai2
+MridulS
+thequackdaddy
 
 Funding from the following sources has supported PySAL development:
+
+Google Summer of Code 2017 
+
+Google Summer of Code 2016 
+
+National Institutes of Health Award 7R01CA1266858-06, Geospatial Factors and Impacts II.
+
+National Science Foundation New Approaches for Spatial Distribution Dynamics
 
 National Science Foundation CyberGIS Software Integration for Sustained Geospatial Innovation
 
@@ -36,7 +62,7 @@ Simulation Technologies to Enhance Criminal Justice Decision Support Systems
 National Institutes of Health Geospatial Factors and Impacts: Measurement and
 Use (R01CA126858-02)
 
-National Science Foundation An Exploratory Space-Time Data Analysis Toolit for
+National Science Foundation An Exploratory Space-Time Data Analysis Toolkit for
 Spatial Social Science Research (0433132)
 
 National Science Foundation Hedonic Models of Location Decisions with

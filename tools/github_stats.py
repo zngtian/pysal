@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 """Simple tools to query github.com and gather stats about issues.
+
+Adapted from: https://github.com/ipython/ipython/blob/master/tools/github_stats.py
 """
 #-----------------------------------------------------------------------------
 # Imports
@@ -13,7 +15,14 @@ import sys
 
 from datetime import datetime, timedelta
 from subprocess import check_output
-from urllib2 import urlopen
+try:
+    from urllib import urlopen
+except:
+    from urllib.request import urlopen
+
+import ssl
+
+context = ssl._create_unverified_context()
 
 #-----------------------------------------------------------------------------
 # Globals

@@ -1,4 +1,5 @@
 .. role:: strike
+
 *******************
 PySAL Documentation
 *******************
@@ -46,11 +47,15 @@ If you're using Sphinx version 1.3 or newer, napoleon is included and should be 
 
 If you're using a version of Sphinx that does not ship with napoleon ( Sphinx < 1.3), you'll need napoleon version 0.2.4 or later and Sphinx version 1.0 or later to compile the documentation. 
 Both modules are available at the Python Package Index, and can be downloaded and installed
-from the command line using *pip* or *easy_install*.::
+from the command line using *pip* or *easy_install*::
 
        $ easy_install sphinx
        $ easy_install sphinxcontrib-napoleon
+or::
 
+       $ pip sphinx
+       $ pip sphinxcontrib-napoleon
+              
 If you get a permission error, trying using 'sudo'. 
 
 The source for the docs is in `doc`. Building the documentation is
@@ -242,7 +247,6 @@ than listing them at the bottom of each class, as has been done in some modules.
 .. _API docs: /library/index
 .. _spreg: /library/spreg/index
 .. _Sphinx: http://pypi.python.org/pypi/Sphinx/
-.. _napoleon: https://pypi.python.org/pypi/sphinxcontrib-napoleon 
 .. _here: https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt
 .. _Github: http://github.com/pysal
 .. _spreg: /library/spreg/index

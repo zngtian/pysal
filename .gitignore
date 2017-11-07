@@ -1,5 +1,6 @@
 *.py[cod]
-
+*.bak
+.ipynb_checkpoints/
 # C extensions
 *.so
 
@@ -18,6 +19,10 @@ develop-eggs
 lib
 lib64
 __pycache__
+
+
+# virtual environment
+venv/
 
 # Installer logs
 pip-log.txt
@@ -73,3 +78,31 @@ pysal/contrib/viz/south_base.html
 pysal/contrib/viz/sp.tex
 pysal/contrib/viz/sss.tex
 pysal/examples/south.prj
+
+#Vi
+*.swp
+.ropeproject/
+.eggs/
+pysal/contrib/planar/
+pysal/esda/.ropeproject/
+pysal/esda/jenks_nb.ipynb
+pysal/examples/snow_maps/fake.dbf
+pysal/examples/snow_maps/fake.prj
+pysal/examples/snow_maps/fake.qpj
+pysal/examples/snow_maps/fake.shp
+pysal/examples/snow_maps/fake.shx
+pysal/examples/snow_maps/fixed.dbf
+pysal/examples/snow_maps/fixed.prj
+pysal/examples/snow_maps/fixed.qgs
+pysal/examples/snow_maps/fixed.qgs~
+pysal/examples/snow_maps/fixed.qpj
+pysal/examples/snow_maps/fixed.shp
+pysal/examples/snow_maps/fixed.shx
+pysal/examples/snow_maps/snow.qgs
+pysal/examples/snow_maps/snow.qgs~
+pysal/examples/snow_maps/soho_graph.dbf
+pysal/examples/snow_maps/soho_graph.prj
+pysal/examples/snow_maps/soho_graph.qpj
+pysal/examples/snow_maps/soho_graph.shp
+pysal/examples/snow_maps/soho_graph.shx
+

@@ -16,7 +16,7 @@ class Testutil(unittest.TestCase):
 
     def test_lat2W(self):
         w9 = pysal.lat2W(3, 3)
-        self.assertEquals(w9.pct_nonzero, 0.29629629629629628)
+        self.assertEquals(w9.pct_nonzero, 29.62962962962963)
         self.assertEquals(w9[0], {1: 1.0, 3: 1.0})
         self.assertEquals(w9[3], {0: 1.0, 4: 1.0, 6: 1.0})
 
@@ -55,6 +55,13 @@ class Testutil(unittest.TestCase):
         wn = {0: [1], 1: [0], 2: [3], 3: [2], 4: [5, 8], 5: [4, 8],
               6: [7], 7: [6], 8: [4, 5]}
         self.assertEquals(w.neighbors, wn)
+        ids = ['id-%i'%i for i in range(len(regimes))]
+        w = pysal.block_weights(regimes, ids=np.array(ids))
+        w0 = {'id-1': 1.0}
+        self.assertEquals(w['id-0'], w0)
+        w = pysal.block_weights(regimes, ids=ids)
+        w0 = {'id-1': 1.0}
+        self.assertEquals(w['id-0'], w0)
 
     def test_comb(self):
         x = range(4)

@@ -9,7 +9,7 @@ PySAL is adopting many of the conventions in the larger scientific computing
 in Python community and we ask that anyone interested in joining the project
 please review the following documents:
 
- * `Documentation standards <http://projects.scipy.org/numpy/wiki/CodingStyleGuidelines>`_
+ * `Documentation standards <https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt>`_
  * `Coding guidelines <http://www.python.org/dev/peps/pep-0008/>`_
  * :doc:`Testing guidelines <testing>`
 
@@ -38,6 +38,11 @@ Source Code
 PySAL uses `git <http://git-scm.com/>`_ and github for our  `code repository <https://github.com/pysal/pysal.git/>`_.
 
 
+Please see `our procedures and policies for development on GitHub <https://github.com/pysal/pysal/wiki/GitHub-Standard-Operating-Procedures>`_
+as well as how to `configure your local git for development
+<https://github.com/pysal/pysal/wiki/Example-git-config>`_.
+
+
 You can setup PySAL for local development following the :doc:`installation instructions </users/installation>`.
 
 
@@ -46,55 +51,22 @@ Development Mailing List
 ------------------------
 
 Development discussions take place on `pysal-dev
-<http://groups.google.com/group/pysal-dev>`_.
+<http://groups.google.com/group/pysal-dev>`_
+and the `gitter room <https://gitter.im/pysal/pysal>`_.
 
 
 -----------------------
 Release Schedule
 -----------------------
 
-PySAL development follows a six-month release schedule that is aligned with
-the academic calendar.
-
-1.9 Cycle
-=========
-
-========   ========   ================= ====================================================
-Start      End        Phase             Notes
-========   ========   ================= ====================================================
-8/1/14      8/14/14   Module Proposals  Developers draft PEPs and prototype
-8/15/14     8/15/14   Developer vote    All developers vote on PEPs 
-8/16/14     8/16/14   Module Approval   BDFL announces final approval
-8/17/14    12/30/14   Development       Implementation and testing of approved modules
-1/1/15       1/1/15   Code Freeze       APIs fixed, bug and testing changes only
-1/23/15     1/30/15   Release Prep      Test release builds, updating svn 
-1/31/15     1/31/15   Release           Official release of 1.9
-========   ========   ================= ====================================================
+As of version 1.11, PySAL has moved to a rolling release model. Discussions
+about releases are carried out during the monthly developer meetings and in 
+the `gitter room <https://gitter.im/pysal/pysal>`_.
 
 
-
-2.0 Cycle
-=========
-
-========   ========   ================= ====================================================
-Start      End        Phase             Notes
-========   ========   ================= ====================================================
-2/1/15      2/14/15   Module Proposals  Developers draft PEPs and prototype
-2/15/15     2/15/15   Developer vote    All developers vote on PEPs 
-2/16/15     2/16/15   Module Approval   BDFL announces final approval
-2/17/15     6/30/15   Development       Implementation and testing of approved modules
-7/1/15      7/27/15   Code Freeze       APIs fixed, bug and testing changes only
-7/23/15     7/30/15   Release Prep      Test release builds, updating svn 
-7/31/15     7/31/15   Release           Official release of 2.0
-========   ========   ================= ====================================================
-
-
-
-
-
------------------------
+----------
 Governance
------------------------
+----------
 
 PySAL is organized around the Benevolent Dictator for Life (BDFL) model of project management.
 The BDFL is responsible for overall project management and direction. Developers have a critical role in shaping that

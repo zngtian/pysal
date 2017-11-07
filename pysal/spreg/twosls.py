@@ -136,7 +136,7 @@ class BaseTSLS(RegressionPropsY, RegressionPropsVM):
 
         if issubclass(type(q), np.ndarray) and issubclass(type(h), np.ndarray):
             raise Exception, "Please do not provide 'q' and 'h' together"
-        if q == None and h == None:
+        if q is None and h is None:
             raise Exception, "Please provide either 'q' or 'h'"
 
         self.y = y
@@ -185,7 +185,6 @@ class BaseTSLS(RegressionPropsY, RegressionPropsVM):
         if robust:
             self.vm = ROBUST.robust_vm(reg=self, gwk=gwk, sig2n_k=sig2n_k)
 
-        self._cache = {}
         if sig2n_k:
             self.sig2 = self.sig2n_k
         else:
@@ -200,10 +199,24 @@ class BaseTSLS(RegressionPropsY, RegressionPropsVM):
 
     @property
     def vm(self):
-        if 'vm' not in self._cache:
+        try:
+            return self._cache['vm']
+        except AttributeError:
+            self._cache = {}
+            self._cache['vm'] = np.dot(self.sig2, self.varb)
+        except KeyError:
             self._cache['vm'] = np.dot(self.sig2, self.varb)
         return self._cache['vm']
 
+    @vm.setter
+    def vm(self, val):
+        try:
+            self._cache['vm'] = val
+        except AttributeError:
+            self._cache = {}
+            self._cache['vm'] = val
+        except KeyError:
+            self._cache['vm'] = val
 
 class TSLS(BaseTSLS):
 

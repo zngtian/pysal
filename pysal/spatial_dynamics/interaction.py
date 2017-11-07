@@ -1,20 +1,22 @@
 """
 Methods for identifying space-time interaction in spatio-temporal event
 data.
+
 """
 __author__ = "Nicholas Malizia <nmalizia@asu.edu>", "Sergio J. Rey \
 <srey@asu.edu>", "Philip Stephens <philip.stephens@asu.edu"
 
+__all__ = ['SpaceTimeEvents', 'knox', 'mantel', 'jacquez', 'modified_knox']
+
+import os
 import pysal
 import numpy as np
 import scipy.stats as stats
-import pysal.weights.Distance as Distance
+#import pysal.weights.Distance as Distance
+from pysal.weights.user import knnW_from_array
 from pysal import cg
 from pysal.spatial_dynamics import util
 from datetime import date
-
-__all__ = ['SpaceTimeEvents', 'knox', 'mantel', 'jacquez', 'modified_knox']
-
 
 class SpaceTimeEvents:
     """
@@ -25,41 +27,41 @@ class SpaceTimeEvents:
     ----------
     path            : string
                       the path to the appropriate shapefile, including the
-                      file name, but excluding the extension
+                      file name and extension
     time            : string
                       column header in the DBF file indicating the column
-                      containing the time stamp
-    infer_timestamp : boolean
+                      containing the time stamp.
+    infer_timestamp : bool, optional
                       if the column containing the timestamp is formatted as
-                      calendar dates, try to coerce them into Python datetime objects
+                      calendar dates, try to coerce them into Python datetime
+                      objects (the default is False).
 
     Attributes
     ----------
     n               : int
-                      number of events
+                      number of events.
     x               : array
-                      n x 1 array of the x coordinates for the events
+                      (n, 1), array of the x coordinates for the events.
     y               : array
-                      n x 1 array of the y coordinates for the events
+                      (n, 1), array of the y coordinates for the events.
     t               : array
-                      n x 1 array of the temporal coordinates for the events
+                      (n, 1), array of the temporal coordinates for the events.
     space           : array
-                      n x 2 array of the spatial coordinates (x,y) for the
-                      events
+                      (n, 2), array of the spatial coordinates (x,y) for the
+                      events.
     time            : array
-                      n x 2 array of the temporal coordinates (t,1) for the
-                      events, the second column is a vector of ones
+                      (n, 2), array of the temporal coordinates (t,1) for the
+                      events, the second column is a vector of ones.
 
     Examples
     --------
-
     Read in the example shapefile data, ensuring to omit the file
     extension. In order to successfully create the event data the .dbf file
     associated with the shapefile should have a column of values that are a
     timestamp for the events. This timestamp may be a numerical value
     or a date. Date inference was added in version 1.6.
 
-    >>> path = pysal.examples.get_path("burkitt")
+    >>> path = pysal.examples.get_path("burkitt.shp")
 
     Create an instance of SpaceTimeEvents from a shapefile, where the
     temporal information is stored in a column named "T".
@@ -116,8 +118,10 @@ class SpaceTimeEvents:
 
     """
     def __init__(self, path, time_col, infer_timestamp=False):
-        shp = pysal.open(path + '.shp')
-        dbf = pysal.open(path + '.dbf')
+        shp = pysal.open(path)
+        head, tail = os.path.split(path)
+        dbf_tail = tail.split(".")[0]+".dbf"
+        dbf = pysal.open(pysal.examples.get_path(dbf_tail))
 
         # extract the spatial coordinates from the shapefile
         x = [coords[0] for coords in shp]
@@ -154,41 +158,36 @@ class SpaceTimeEvents:
 
 def knox(s_coords, t_coords, delta, tau, permutations=99, debug=False):
     """
-    Knox test for spatio-temporal interaction. [1]_
+    Knox test for spatio-temporal interaction. [Knox1964]_
 
     Parameters
     ----------
     s_coords        : array
-                      nx2 spatial coordinates
+                      (n, 2), spatial coordinates.
     t_coords        : array
-                      nx1 temporal coordinates
+                      (n, 1), temporal coordinates.
     delta           : float
-                      threshold for proximity in space
+                      threshold for proximity in space.
     tau             : float
-                      threshold for proximity in time
-    permutations    : int
+                      threshold for proximity in time.
+    permutations    : int, optional
                       the number of permutations used to establish pseudo-
-                      significance (default is 99)
-    debug           : bool
-                      if true, debugging information is printed
+                      significance (the default is 99).
+    debug           : bool, optional
+                      if true, debugging information is printed (the default is
+                      False).
 
     Returns
     -------
     knox_result     : dictionary
                       contains the statistic (stat) for the test and the
-                      associated p-value (pvalue)
+                      associated p-value (pvalue).
     stat            : float
-                      value of the knox test for the dataset
+                      value of the knox test for the dataset.
     pvalue          : float
-                      pseudo p-value associated with the statistic
+                      pseudo p-value associated with the statistic.
     counts          : int
-                      count of space time neighbors
-
-    References
-    ----------
-    .. [1] E. Knox. 1964. The detection of space-time
-       interactions. Journal of the Royal Statistical Society. Series C
-       (Applied Statistics), 13(1):25-30.
+                      count of space time neighbors.
 
     Examples
     --------
@@ -197,7 +196,7 @@ def knox(s_coords, t_coords, delta, tau, permutations=99, debug=False):
 
     Read in the example data and create an instance of SpaceTimeEvents.
 
-    >>> path = pysal.examples.get_path("burkitt")
+    >>> path = pysal.examples.get_path("burkitt.shp")
     >>> events = SpaceTimeEvents(path,'T')
 
     Set the random seed generator. This is used by the permutation based
@@ -262,47 +261,37 @@ def knox(s_coords, t_coords, delta, tau, permutations=99, debug=False):
 
 def mantel(s_coords, t_coords, permutations=99, scon=1.0, spow=-1.0, tcon=1.0, tpow=-1.0):
     """
-    Standardized Mantel test for spatio-temporal interaction. [2]_
+    Standardized Mantel test for spatio-temporal interaction. [Mantel1967]_
 
     Parameters
     ----------
     s_coords        : array
-                      nx2 spatial coordinates
-
+                      (n, 2), spatial coordinates.
     t_coords        : array
-                      nx1 temporal coordinates
-
-    permutations    : int
+                      (n, 1), temporal coordinates.
+    permutations    : int, optional
                       the number of permutations used to establish pseudo-
-                      significance (default is 99)
-
-    scon            : float
-                      constant added to spatial distances
-
-    spow            : float
+                      significance (the default is 99).
+    scon            : float, optional
+                      constant added to spatial distances (the default is 1.0).
+    spow            : float, optional
                       value for power transformation for spatial distances
-
-    tcon            : float
-                      constant added to temporal distances
-
-    tpow            : float
+                      (the default is -1.0).
+    tcon            : float, optional
+                      constant added to temporal distances (the default is 1.0).
+    tpow            : float, optional
                       value for power transformation for temporal distances
-
+                      (the default is -1.0).
 
     Returns
     -------
     mantel_result   : dictionary
                       contains the statistic (stat) for the test and the
-                      associated p-value (pvalue)
+                      associated p-value (pvalue).
     stat            : float
-                      value of the knox test for the dataset
+                      value of the knox test for the dataset.
     pvalue          : float
-                      pseudo p-value associated with the statistic
-
-    References
-    ----------
-    .. [2] N. Mantel. 1967. The detection of disease clustering and a
-        generalized regression approach. Cancer Research, 27(2):209-220.
+                      pseudo p-value associated with the statistic.
 
     Examples
     --------
@@ -311,7 +300,7 @@ def mantel(s_coords, t_coords, permutations=99, scon=1.0, spow=-1.0, tcon=1.0, t
 
     Read in the example data and create an instance of SpaceTimeEvents.
 
-    >>> path = pysal.examples.get_path("burkitt")
+    >>> path = pysal.examples.get_path("burkitt.shp")
     >>> events = SpaceTimeEvents(path,'T')
 
     Set the random seed generator. This is used by the permutation based
@@ -341,7 +330,6 @@ def mantel(s_coords, t_coords, permutations=99, scon=1.0, spow=-1.0, tcon=1.0, t
 
     >>> print("%2.2f"%result['pvalue'])
     0.01
-
 
     """
 
@@ -383,40 +371,32 @@ def mantel(s_coords, t_coords, permutations=99, scon=1.0, spow=-1.0, tcon=1.0, t
 
 def jacquez(s_coords, t_coords, k, permutations=99):
     """
-    Jacquez k nearest neighbors test for spatio-temporal interaction. [3]_
+    Jacquez k nearest neighbors test for spatio-temporal interaction.
+    [Jacquez1996]_
 
     Parameters
     ----------
     s_coords        : array
-                      nx2 spatial coordinates
-
+                      (n, 2), spatial coordinates.
     t_coords        : array
-                      nx1 temporal coordinates
-
+                      (n, 1), temporal coordinates.
     k               : int
-                      the number of nearest neighbors to be searched
-
-    permutations    : int
+                      the number of nearest neighbors to be searched.
+    permutations    : int, optional
                       the number of permutations used to establish pseudo-
-                      significance (default is 99)
+                      significance (the default is 99).
 
     Returns
     -------
     jacquez_result  : dictionary
                       contains the statistic (stat) for the test and the
-                      associated p-value (pvalue)
+                      associated p-value (pvalue).
     stat            : float
                       value of the Jacquez k nearest neighbors test for the
-                      dataset
+                      dataset.
     pvalue          : float
                       p-value associated with the statistic (normally
-                      distributed with k-1 df)
-
-    References
-    ----------
-    .. [3] G. Jacquez. 1996. A k nearest neighbour test for space-time
-       interaction. Statistics in Medicine, 15(18):1935-1949.
-
+                      distributed with k-1 df).
 
     Examples
     --------
@@ -425,7 +405,7 @@ def jacquez(s_coords, t_coords, k, permutations=99):
 
     Read in the example data and create an instance of SpaceTimeEvents.
 
-    >>> path = pysal.examples.get_path("burkitt")
+    >>> path = pysal.examples.get_path("burkitt.shp")
     >>> events = SpaceTimeEvents(path,'T')
 
     The Jacquez test counts the number of events that are k nearest
@@ -453,8 +433,8 @@ def jacquez(s_coords, t_coords, k, permutations=99):
     n = len(time)
 
     # calculate the nearest neighbors in space and time separately
-    knnt = Distance.knnW(time, k)
-    knns = Distance.knnW(space, k)
+    knnt = knnW_from_array(time, k)
+    knns = knnW_from_array(space, k)
 
     nnt = knnt.neighbors
     nns = knns.neighbors
@@ -480,7 +460,7 @@ def jacquez(s_coords, t_coords, k, permutations=99):
     for p in range(permutations):
         j = 0
         trand = np.random.permutation(time)
-        knnt = Distance.knnW(trand, k)
+        knnt = knnW_from_array(trand, k)
         nnt = knnt.neighbors
         for i in range(n):
             t_neighbors = nnt[i]
@@ -505,36 +485,31 @@ def jacquez(s_coords, t_coords, k, permutations=99):
 
 def modified_knox(s_coords, t_coords, delta, tau, permutations=99):
     """
-    Baker's modified Knox test for spatio-temporal interaction. [4]_
+    Baker's modified Knox test for spatio-temporal interaction. [Baker2004]_
 
     Parameters
     ----------
     s_coords        : array
-                      nx2 spatial coordinates
+                      (n, 2), spatial coordinates.
     t_coords        : array
-                      nx1 temporal coordinates
+                      (n, 1), temporal coordinates.
     delta           : float
-                      threshold for proximity in space
+                      threshold for proximity in space.
     tau             : float
-                      threshold for proximity in time
-    permutations    : int
+                      threshold for proximity in time.
+    permutations    : int, optional
                       the number of permutations used to establish pseudo-
-                      significance (default is 99)
+                      significance (the default is 99).
 
     Returns
     -------
     modknox_result  : dictionary
                       contains the statistic (stat) for the test and the
-                      associated p-value (pvalue)
+                      associated p-value (pvalue).
     stat            : float
-                      value of the modified knox test for the dataset
+                      value of the modified knox test for the dataset.
     pvalue          : float
-                      pseudo p-value associated with the statistic
-
-    References
-    ----------
-    .. [4] R.D. Baker. Identifying space-time disease clusters. Acta Tropica,
-       91(3):291-299, 2004
+                      pseudo p-value associated with the statistic.
 
     Examples
     --------
@@ -543,7 +518,7 @@ def modified_knox(s_coords, t_coords, delta, tau, permutations=99):
 
     Read in the example data and create an instance of SpaceTimeEvents.
 
-    >>> path = pysal.examples.get_path("burkitt")
+    >>> path = pysal.examples.get_path("burkitt.shp")
     >>> events = SpaceTimeEvents(path, 'T')
 
     Set the random seed generator. This is used by the permutation based

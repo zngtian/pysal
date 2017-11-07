@@ -21,7 +21,7 @@ class GM_Lag_Regimes(TSLS_Regimes, REGI.Regimes_Frame):
 
     """
     Spatial two stage least squares (S2SLS) with regimes; 
-    Anselin (1988) [1]_
+    Anselin (1988) [Anselin1988]_
 
     Parameters
     ----------
@@ -289,12 +289,6 @@ class GM_Lag_Regimes(TSLS_Regimes, REGI.Regimes_Frame):
                    i.e. when regime_err_sep=True and no variable is fixed
                    across regimes.
                    Contains all attributes of each individual regression
-
-    References
-    ----------
-
-    .. [1] Anselin, L. (1988) "Spatial Econometrics: Methods and Models".
-    Kluwer Academic Publishers. Dordrecht.
 
     Examples
     --------
@@ -642,11 +636,11 @@ class GM_Lag_Regimes(TSLS_Regimes, REGI.Regimes_Frame):
 def _work(y, x, regi_ids, r, yend, q, w_r, w_lags, lag_q, robust, sig2n_k, name_ds, name_y, name_x, name_yend, name_q, name_w, name_regimes):
     y_r = y[regi_ids[r]]
     x_r = x[regi_ids[r]]
-    if yend != None:
+    if yend is not None:
         yend_r = yend[regi_ids[r]]
     else:
         yend_r = yend
-    if q != None:
+    if q is not None:
         q_r = q[regi_ids[r]]
     else:
         q_r = q

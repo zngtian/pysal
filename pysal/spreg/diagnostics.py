@@ -6,6 +6,7 @@ __author__ = "Luc Anselin luc.anselin@asu.edu, Nicholas Malizia nicholas.malizia
 
 import pysal
 from pysal.common import *
+chisqprob = stats.chi2.sf
 import scipy.sparse as SP
 from math import sqrt
 from utils import spmultiply, sphstack, spmin, spmax
@@ -18,7 +19,8 @@ __all__ = [
 
 def f_stat(reg):
     """
-    Calculates the f-statistic and associated p-value of the regression.
+    Calculates the f-statistic and associated p-value of the
+    regression. [Greene2003]_
     (For two stage least squares see f_stat_tsls)
 
     Parameters
@@ -30,11 +32,6 @@ def f_stat(reg):
     ----------
     fs_result       : tuple
                       includes value of F statistic and associated p-value
-
-    References
-    ----------
-    .. [1] W. Greene. 2003. Econometric Analysis. Prentice Hall, Upper
-       Saddle River. 
 
     Examples
     --------
@@ -88,7 +85,8 @@ def f_stat(reg):
 
 def t_stat(reg, z_stat=False):
     """
-    Calculates the t-statistics (or z-statistics) and associated p-values.
+    Calculates the t-statistics (or z-statistics) and associated
+    p-values. [Greene2003]_
 
     Parameters
     ----------
@@ -102,12 +100,6 @@ def t_stat(reg, z_stat=False):
     ts_result       : list of tuples
                       each tuple includes value of t statistic (or z
                       statistic) and associated p-value
-
-    References
-    ----------
-
-    .. [1] W. Greene. 2003. Econometric Analysis. Prentice Hall, Upper
-       Saddle River. 
 
     Examples
     --------
@@ -163,7 +155,7 @@ def t_stat(reg, z_stat=False):
 
 def r2(reg):
     """
-    Calculates the R^2 value for the regression. 
+    Calculates the R^2 value for the regression. [Greene2003]_ 
 
     Parameters
     ----------
@@ -175,11 +167,6 @@ def r2(reg):
     r2_result       : float
                       value of the coefficient of determination for the
                       regression 
-
-    References
-    ----------
-    .. [1] W. Greene. 2003. Econometric Analysis. Prentice Hall, Upper
-       Saddle River. 
 
     Examples
     --------
@@ -229,7 +216,7 @@ def r2(reg):
 
 def ar2(reg):
     """
-    Calculates the adjusted R^2 value for the regression. 
+    Calculates the adjusted R^2 value for the regression. [Greene2003]_
 
     Parameters
     ----------
@@ -241,11 +228,6 @@ def ar2(reg):
     ar2_result      : float
                       value of R^2 adjusted for the number of explanatory
                       variables.
-
-    References
-    ----------
-    .. [1] W. Greene. 2003. Econometric Analysis. Prentice Hall, Upper
-       Saddle River. 
 
     Examples
     --------
@@ -291,7 +273,7 @@ def ar2(reg):
 
 def se_betas(reg):
     """
-    Calculates the standard error of the regression coefficients.
+    Calculates the standard error of the regression coefficients. [Greene2003]_
 
     Parameters
     ----------
@@ -302,11 +284,6 @@ def se_betas(reg):
     ----------
     se_result       : array
                       includes standard errors of each coefficient (1 x k)
-
-    References
-    ----------
-    .. [1] W. Greene. 2003. Econometric Analysis. Prentice Hall, Upper
-       Saddle River. 
 
     Examples
     --------
@@ -353,7 +330,7 @@ def se_betas(reg):
 
 def log_likelihood(reg):
     """
-    Calculates the log-likelihood value for the regression. 
+    Calculates the log-likelihood value for the regression. [Greene2003]_ 
 
     Parameters
     ----------
@@ -364,11 +341,6 @@ def log_likelihood(reg):
     -------
     ll_result       : float
                       value for the log-likelihood of the regression.
-
-    References
-    ----------
-    .. [1] W. Greene. 2003. Econometric Analysis. Prentice Hall, Upper
-       Saddle River. 
 
     Examples
     --------
@@ -416,7 +388,7 @@ def log_likelihood(reg):
 
 def akaike(reg):
     """
-    Calculates the Akaike Information Criterion.
+    Calculates the Akaike Information Criterion. [Akaike1974]_
 
     Parameters
     ----------
@@ -428,11 +400,6 @@ def akaike(reg):
     aic_result      : scalar
                       value for Akaike Information Criterion of the
                       regression. 
-
-    References
-    ----------
-    .. [1] H. Akaike. 1974. A new look at the statistical identification
-       model. IEEE Transactions on Automatic Control, 19(6):716-723.
 
     Examples
     --------
@@ -484,7 +451,7 @@ def akaike(reg):
 
 def schwarz(reg):
     """
-    Calculates the Schwarz Information Criterion.
+    Calculates the Schwarz Information Criterion. [Schwarz1978]_
 
     Parameters
     ----------
@@ -496,11 +463,6 @@ def schwarz(reg):
     bic_result      : scalar
                       value for Schwarz (Bayesian) Information Criterion of
                       the regression. 
-
-    References
-    ----------
-    .. [1] G. Schwarz. 1978. Estimating the dimension of a model. The
-       Annals of Statistics, pages 461-464. 
 
     Examples
     --------
@@ -553,7 +515,7 @@ def schwarz(reg):
 def condition_index(reg):
     """
     Calculates the multicollinearity condition index according to Belsey,
-    Kuh and Welsh (1980).
+    Kuh and Welsh (1980) [Belsley1980]_.
 
     Parameters
     ----------
@@ -565,11 +527,6 @@ def condition_index(reg):
     ci_result       : float
                       scalar value for the multicollinearity condition
                       index. 
-
-    References
-    ----------
-    .. [1] D. Belsley, E. Kuh, and R. Welsch. 1980. Regression
-       Diagnostics. New York: Wiley.
 
     Examples
     --------
@@ -623,7 +580,7 @@ def condition_index(reg):
 
 def jarque_bera(reg):
     """
-    Jarque-Bera test for normality in the residuals. 
+    Jarque-Bera test for normality in the residuals. [Jarque1980]_ 
 
     Parameters
     ----------
@@ -642,12 +599,6 @@ def jarque_bera(reg):
     pvalue          : float
                       p-value associated with the statistic (chi^2
                       distributed with 2 df)
-
-    References
-    ----------
-    .. [1] C. Jarque and A. Bera. 1980. Efficient tests for normality,
-       homoscedasticity and serial independence of regression residuals.
-       Economics Letters, 6(3):255-259.
 
     Examples
     --------
@@ -707,7 +658,7 @@ def jarque_bera(reg):
     S = mu3 / (mu2 ** (1.5))    # skewness measure
     K = (mu4 / (mu2 ** 2))      # kurtosis measure
     jb = n * (((S ** 2) / 6) + ((K - 3) ** 2) / 24)
-    pvalue = stats.chisqprob(jb, 2)
+    pvalue = chisqprob(jb, 2)
     jb_result = {"df": 2, "jb": jb, 'pvalue': pvalue}
     return jb_result
 
@@ -715,7 +666,7 @@ def jarque_bera(reg):
 def breusch_pagan(reg, z=None):
     """
     Calculates the Breusch-Pagan test statistic to check for
-    heteroscedasticity. 
+    heteroscedasticity. [Breusch1979]_ 
 
     Parameters
     ----------
@@ -747,13 +698,6 @@ def breusch_pagan(reg, z=None):
     -----
     x attribute in the reg object must have a constant term included. This is
     standard for spreg.OLS so no testing done to confirm constant.
-
-    References
-    ----------
-
-    .. [1] T. Breusch and A. Pagan. 1979. A simple test for
-       heteroscedasticity and random coefficient variation. Econometrica:
-       Journal of the Econometric Society, 47(5):1287-1294.
 
     Examples
     --------
@@ -864,14 +808,14 @@ def breusch_pagan(reg, z=None):
     bp_array = 0.5 * part2
     bp = bp_array[0, 0]
 
-    pvalue = stats.chisqprob(bp, df)
+    pvalue = chisqprob(bp, df)
     bp_result = {'df': df, 'bp': bp, 'pvalue': pvalue}
     return bp_result
 
 
 def white(reg):
     """
-    Calculates the White test to check for heteroscedasticity.
+    Calculates the White test to check for heteroscedasticity. [White1980]_
 
     Parameters
     ----------
@@ -896,12 +840,6 @@ def white(reg):
     -----
     x attribute in the reg object must have a constant term included. This is
     standard for spreg.OLS so no testing done to confirm constant.
-
-    References
-    ----------
-    .. [1] H. White. 1980. A heteroscedasticity-consistent covariance
-       matrix estimator and a direct test for heteroskdasticity.
-       Econometrica. 48(4) 817-838. 
 
     Examples
     --------
@@ -951,8 +889,8 @@ def white(reg):
 
     """
     e = reg.u ** 2
-    k = reg.k
-    n = reg.n
+    k = int(reg.k)
+    n = int(reg.n)
     y = reg.y
     X = reg.x
     #constant = constant_check(X)
@@ -969,10 +907,10 @@ def white(reg):
 
     # Compute cross-products and squares of the regression variables
     if type(X).__name__ == 'ndarray':
-        A = np.zeros((n, (k * (k + 1)) / 2.))
+        A = np.zeros((n, (k * (k + 1)) // 2))
     elif type(X).__name__ == 'csc_matrix' or type(X).__name__ == 'csr_matrix':
         # this is probably inefficient
-        A = SP.lil_matrix((n, (k * (k + 1)) / 2.))
+        A = SP.lil_matrix((n, (k * (k + 1)) // 2))
     else:
         raise Exception, "unknown X type, %s" % type(X).__name__
     counter = 0
@@ -1024,7 +962,7 @@ def white(reg):
     aux_r2 = r2(aux_reg)
     wh = aux_r2 * n
     df = k - 1
-    pvalue = stats.chisqprob(wh, df)
+    pvalue = chisqprob(wh, df)
     white_result = {'df': df, 'wh': wh, 'pvalue': pvalue}
     return white_result
 
@@ -1032,7 +970,7 @@ def white(reg):
 def koenker_bassett(reg, z=None):
     """
     Calculates the Koenker-Bassett test statistic to check for
-    heteroscedasticity. 
+    heteroscedasticity. [Koenker1982]_ [Greene2003]_
 
     Parameters
     ----------
@@ -1064,14 +1002,6 @@ def koenker_bassett(reg, z=None):
     -----
     x attribute in the reg object must have a constant term included. This is
     standard for spreg.OLS so no testing done to confirm constant.
-
-    References
-    ----------
-    .. [1] R. Koenker and G. Bassett. 1982. Robust tests for
-       heteroscedasticity based on regression quantiles. Econometrica,
-       50(1):43-61. 
-    .. [2] W. Greene. 2003. Econometric Analysis. Prentice Hall, Upper
-       Saddle River. 
 
     Examples
     --------
@@ -1187,7 +1117,7 @@ def koenker_bassett(reg, z=None):
     kb_array = (1.0 / v) * part2
     kb = kb_array[0, 0]
 
-    pvalue = stats.chisqprob(kb, df)
+    pvalue = chisqprob(kb, df)
     kb_result = {'kb': kb, 'df': df, 'pvalue': pvalue}
     return kb_result
 
@@ -1197,7 +1127,7 @@ def vif(reg):
     Calculates the variance inflation factor for each independent variable.
     For the ease of indexing the results, the constant is currently
     included. This should be omitted when reporting the results to the
-    output text.
+    output text. [Greene2003]_
 
     Parameters
     ----------
@@ -1210,11 +1140,6 @@ def vif(reg):
                       each tuple includes the vif and the tolerance, the
                       order of the variables corresponds to their order in
                       the reg.x matrix
-
-    References
-    ----------
-    .. [1] W. Greene. 2003. Econometric Analysis. Prentice Hall, Upper
-       Saddle River. 
 
     Examples
     --------
@@ -1341,7 +1266,7 @@ def constant_check(array):
 
 def likratiotest(reg0, reg1):
     """
-    Likelihood ratio test statistic
+    Likelihood ratio test statistic [Greene2003]_
 
     Parameters
     ----------
@@ -1361,11 +1286,6 @@ def likratiotest(reg0, reg1):
                    degrees of freedom
     p-value      : float
                    p-value
-
-    References
-    ----------
-    .. [1] W. Greene. 2012. Econometric Analysis. Prentice Hall, Upper
-       Saddle River.
 
     Examples
     --------
@@ -1411,7 +1331,7 @@ def likratiotest(reg0, reg1):
         raise Exception, "Missing or improper log-likelihoods in regression objects"
     if likr < 0.0:  # always enforces positive likelihood ratio
         likr = -likr
-    pvalue = stats.chisqprob(likr, 1)
+    pvalue = chisqprob(likr, 1)
     likratio = {"likr": likr, "df": 1, "p-value": pvalue}
     return likratio
 

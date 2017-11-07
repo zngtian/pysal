@@ -20,8 +20,8 @@ PySAL
 
 .. sidebar:: Releases
 
-    - `Stable 1.8.0 - July 2014 <users/installation.html>`_
-    - `Development 1.9.0dev  <http://github.com/pysal/pysal/>`_
+    - `Stable 1.14.3 (Released 2017-11-2) <users/installation.html>`_
+    - `Development  <http://github.com/pysal/pysal/tree/dev>`_
 
 PySAL is an open source library of spatial analysis functions written in
 Python intended to support the development of high level applications.
@@ -33,8 +33,9 @@ PySAL is open source under the `BSD License`_.
 .. toctree::
     :maxdepth: 1
 
-    News <news>
-    Funding <funding>
+    News <http://pysal.github.io/news.html>
+    Events <http://pysal.github.io/upcoming_events.html>
+    Funding <http://pysal.github.io/funding.html>
     Gallery <http://pysal.github.io/grid.html>
     users/index
     developers/index

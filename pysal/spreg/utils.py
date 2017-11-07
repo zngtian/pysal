@@ -5,17 +5,20 @@ Tools for different procedure estimations
 __author__ = "Luc Anselin luc.anselin@asu.edu, \
         Pedro V. Amaral pedro.amaral@asu.edu, \
         David C. Folch david.folch@asu.edu, \
-        Daniel Arribas-Bel darribas@asu.edu"
+        Daniel Arribas-Bel darribas@asu.edu,\
+        Levi Wolf levi.john.wolf@gmail.com"
 
 import numpy as np
 from scipy import sparse as SP
+from scipy.sparse import linalg as SPla
 import scipy.optimize as op
 import numpy.linalg as la
 from pysal import lag_spatial
+from sputils import *
 import copy
 
 
-class RegressionPropsY:
+class RegressionPropsY(object):
 
     """
     Helper class that adds common regression properties to any regression
@@ -36,18 +39,48 @@ class RegressionPropsY:
 
     @property
     def mean_y(self):
-        if 'mean_y' not in self._cache:
+        try:
+            return self._cache['mean_y']
+        except AttributeError:
+            self._cache = {}
+            self._cache['mean_y'] = np.mean(self.y)
+        except KeyError:
             self._cache['mean_y'] = np.mean(self.y)
         return self._cache['mean_y']
+    
+    @mean_y.setter
+    def mean_y(self, val):
+        try:
+            self._cache['mean_y'] = val
+        except AttributeError:
+            self._cache = {}
+            self._cache['mean_y'] = val
+        except KeyError:
+            self._cache['mean_y'] = val
 
     @property
     def std_y(self):
-        if 'std_y' not in self._cache:
+        try:
+            return self._cache['std_y']
+        except AttributeError:
+            self._cache = {}
+            self._cache['std_y'] = np.std(self.y, ddof=1)
+        except KeyError:
             self._cache['std_y'] = np.std(self.y, ddof=1)
         return self._cache['std_y']
+    
+    @std_y.setter
+    def std_y(self, val):
+        try:
+            self._cache['std_y'] = val
+        except AttributeError:
+            self._cache = {}
+            self._cache['std_y'] = val
+        except KeyError:
+            self._cache['std_y'] = val
 
 
-class RegressionPropsVM:
+class RegressionPropsVM(object):
 
     """
     Helper class that adds common regression properties to any regression
@@ -72,32 +105,93 @@ class RegressionPropsVM:
 
     @property
     def utu(self):
-        if 'utu' not in self._cache:
+        try:
+            return self._cache['utu']
+        except AttributeError:
+            self._cache = {}
+            self._cache['utu'] = np.sum(self.u ** 2)
+        except KeyError:
             self._cache['utu'] = np.sum(self.u ** 2)
         return self._cache['utu']
 
+    @utu.setter
+    def utu(self, val):
+        try:
+            self._cache['utu'] = val
+        except AttributeError:
+            self._cache = {}
+            self._cache['utu'] = val
+        except KeyError:
+            self._cache['utu'] = val
+
     @property
     def sig2n(self):
-        if 'sig2n' not in self._cache:
+        try:
+            return self._cache['sig2n']
+        except AttributeError:
+            self._cache = {}
+            self._cache['sig2n'] = self.utu / self.n
+        except KeyError:
             self._cache['sig2n'] = self.utu / self.n
         return self._cache['sig2n']
 
+    @sig2n.setter
+    def sig2n(self, val):
+        try:
+            self._cache['sig2n'] = val
+        except AttributeError:
+            self._cache = {}
+            self._cache['sig2n'] = val
+        except KeyError:
+            self._cache['sig2n'] = val
+
     @property
     def sig2n_k(self):
-        if 'sig2n_k' not in self._cache:
+        try:
+            return self._cache['sig2n_k']
+        except AttributeError:
+            self._cache = {}
+            self._cache['sig2n_k'] = self.utu / (self.n - self.k)
+        except KeyError:
             self._cache['sig2n_k'] = self.utu / (self.n - self.k)
         return self._cache['sig2n_k']
+    
+    @sig2n_k.setter
+    def sig2n_k(self, val):
+        try:
+            self._cache['sig2n_k'] = val
+        except AttributeError:
+            self._cache = {}
+            self._cache['sig2n_k'] = val
+        except KeyError:
+            self._cache['sig2n_k'] = val
 
     @property
     def vm(self):
-        if 'vm' not in self._cache:
+        try:
+            return self._cache['vm']
+        except AttributeError:
+            self._cache = {}
             self._cache['vm'] = np.dot(self.sig2, self.xtxi)
-        return self._cache['vm']
+        except KeyError:
+            self._cache['vm'] = np.dot(self.sig2, self.xtxi)
+        finally:
+            return self._cache['vm']
+
+    @vm.setter
+    def vm(self, val):
+        try:
+            self._cache['vm'] = val
+        except AttributeError:
+            self._cache = {}
+            self._cache['vm'] = val
+        except KeyError:
+            self._cache['vm'] = val
 
 
 def get_A1_het(S):
     """
-    Builds A1 as in Arraiz et al [1]_
+    Builds A1 as in Arraiz et al [Arraiz2010]_
 
     .. math::
 
@@ -117,13 +211,6 @@ def get_A1_het(S):
     Implicit        : csr_matrix
                       A1 matrix in scipy sparse format
 
-    References
-    ----------
-
-    .. [1] Arraiz, I., Drukker, D. M., Kelejian, H., Prucha, I. R. (2010) "A
-    Spatial Cliff-Ord-Type Model with Heteroskedastic Innovations: Small and
-    Large Sample Results". Journal of Regional Science, Vol. 60, No. 2, pp.
-    592-614.
     """
     StS = S.T * S
     d = SP.spdiags([StS.diagonal()], [0], S.get_shape()[0], S.get_shape()[1])
@@ -133,7 +220,8 @@ def get_A1_het(S):
 
 def get_A1_hom(s, scalarKP=False):
     """
-    Builds A1 for the spatial error GM estimation with homoscedasticity as in Drukker et al. [1]_ (p. 9).
+    Builds A1 for the spatial error GM estimation with homoscedasticity as in
+    Drukker et al. [Drukker2011]_ (p. 9).
 
     .. math::
 
@@ -155,19 +243,12 @@ def get_A1_hom(s, scalarKP=False):
 
     Implicit        : csr_matrix
                       A1 matrix in scipy sparse format
-    References
-    ----------
-
-    .. [1] Drukker, Prucha, I. R., Raciborski, R. (2010) "A command for
-    estimating spatial-autoregressive models with spatial-autoregressive
-    disturbances and additional endogenous variables". The Stata Journal, 1,
-    N. 1, pp. 1-13.      
     """
     n = float(s.shape[0])
     wpw = s.T * s
     twpw = np.sum(wpw.diagonal())
     e = SP.eye(n, n, format='csr')
-    e.data = np.ones(n) * (twpw / n)
+    e.data = np.ones(int(n)) * (twpw / n)
     num = wpw - e
     if not scalarKP:
         return num
@@ -179,7 +260,7 @@ def get_A1_hom(s, scalarKP=False):
 def get_A2_hom(s):
     """
     Builds A2 for the spatial error GM estimation with homoscedasticity as in
-    Anselin (2011) [1]_ 
+    Anselin (2011) [Anselin2011]_ 
 
     .. math::
 
@@ -195,10 +276,6 @@ def get_A2_hom(s):
     -------
     Implicit        : csr_matrix
                       A2 matrix in scipy sparse format
-    References
-    ----------
-
-    .. [1] Anselin (2011) "GMM Estimation of Spatial Error Autocorrelation with and without Heteroskedasticity".
     """
     return (s + s.T) / 2.
 
@@ -206,7 +283,7 @@ def get_A2_hom(s):
 def _moments2eqs(A1, s, u):
     '''
     Helper to compute G and g in a system of two equations as in
-    the heteroskedastic error models from Drukker et al. [1]_
+    the heteroskedastic error models from Drukker et al. [Drukker2011]_
     ...
 
     Parameters
@@ -230,13 +307,6 @@ def _moments2eqs(A1, s, u):
                   'g', respectively.
 
 
-    References
-    ----------
-
-    .. [1] Drukker, Prucha, I. R., Raciborski, R. (2010) "A command for
-    estimating spatial-autoregressive models with spatial-autoregressive
-    disturbances and additional endogenous variables". The Stata Journal, 1,
-    N. 1, pp. 1-13.
     '''
     n = float(s.shape[0])
     A1u = A1 * u
@@ -588,213 +658,6 @@ def sp_att(w, y, predy, w_y, rho):
     # see Note 1.
     return predy_sp, resid_sp, warn
 
-
-def spdot(a, b, array_out=True):
-    """
-    Matrix multiplication function to deal with sparse and dense objects
-
-    Parameters
-    ----------
-
-    a           : array
-                  first multiplication factor. Can either be sparse or dense.
-    b           : array
-                  second multiplication factor. Can either be sparse or dense.
-    array_out   : boolean
-                  If True (default) the output object is always a np.array
-
-    Returns
-    -------
-
-    ab : array
-         product of a times b. Sparse if a and b are sparse. Dense otherwise.
-    """
-    if type(a).__name__ == 'ndarray' and type(b).__name__ == 'ndarray':
-        ab = np.dot(a, b)
-    elif type(a).__name__ == 'csr_matrix' or type(b).__name__ == 'csr_matrix' \
-            or type(a).__name__ == 'csc_matrix' or type(b).__name__ == 'csc_matrix':
-        ab = a * b
-        if array_out:
-            if type(ab).__name__ == 'csc_matrix' or type(ab).__name__ == 'csr_matrix':
-                ab = ab.toarray()
-    else:
-        raise Exception, "Invalid format for 'spdot' argument: %s and %s" % (
-            type(a).__name__, type(b).__name__)
-    return ab
-
-
-def spmultiply(a, b, array_out=True):
-    """
-    Element-wise multiplication function to deal with sparse and dense
-    objects. Both objects must be of the same type.
-
-    Parameters
-    ----------
-
-    a           : array
-                  first multiplication factor. Can either be sparse or dense.
-    b           : array
-                  second multiplication factor. Can either be sparse or dense.
-                  integer.
-    array_out   : boolean
-                  If True (default) the output object is always a np.array
-
-    Returns
-    -------
-
-    ab : array
-         elementwise multiplied object. Sparse if a is sparse. Dense otherwise.
-    """
-    if type(a).__name__ == 'ndarray' and type(b).__name__ == 'ndarray':
-        ab = a * b
-    elif (type(a).__name__ == 'csr_matrix' or type(a).__name__ == 'csc_matrix') \
-            and (type(b).__name__ == 'csr_matrix' or type(b).__name__ == 'csc_matrix'):
-        ab = a.multiply(b)
-        if array_out:
-            if type(ab).__name__ == 'csc_matrix' or type(ab).__name__ == 'csr_matrix':
-                ab = ab.toarray()
-    else:
-        raise Exception, "Invalid format for 'spmultiply' argument: %s and %s" % (
-            type(a).__name__, type(b).__name__)
-    return ab
-
-
-def sphstack(a, b, array_out=False):
-    """
-    Horizontal stacking of vectors (or matrices) to deal with sparse and dense objects
-
-    Parameters
-    ----------
-
-    a           : array or sparse matrix
-                  First object.
-    b           : array or sparse matrix
-                  Object to be stacked next to a
-    array_out   : boolean
-                  If True the output object is a np.array; if False (default)
-                  the output object is an np.array if both inputs are
-                  arrays or CSR matrix if at least one input is a CSR matrix
-
-    Returns
-    -------
-
-    ab          : array or sparse matrix
-                  Horizontally stacked objects
-    """
-    if type(a).__name__ == 'ndarray' and type(b).__name__ == 'ndarray':
-        ab = np.hstack((a, b))
-    elif type(a).__name__ == 'csr_matrix' or type(b).__name__ == 'csr_matrix':
-        ab = SP.hstack((a, b), format='csr')
-        if array_out:
-            if type(ab).__name__ == 'csr_matrix':
-                ab = ab.toarray()
-    else:
-        raise Exception, "Invalid format for 'sphstack' argument: %s and %s" % (
-            type(a).__name__, type(b).__name__)
-    return ab
-
-
-def spbroadcast(a, b, array_out=False):
-    """
-    Element-wise multiplication of a matrix and vector to deal with sparse 
-    and dense objects
-
-    Parameters
-    ----------
-
-    a           : array or sparse matrix
-                  Object with one or more columns.
-    b           : array
-                  Object with only one column
-    array_out   : boolean
-                  If True the output object is a np.array; if False (default)
-                  the output object is an np.array if both inputs are
-                  arrays or CSR matrix if at least one input is a CSR matrix
-
-    Returns
-    -------
-
-    ab          : array or sparse matrix
-                  Element-wise multiplication of a and b
-    """
-    if type(a).__name__ == 'ndarray' and type(b).__name__ == 'ndarray':
-        ab = a * b
-    elif type(a).__name__ == 'csr_matrix':
-        b_mod = SP.lil_matrix((b.shape[0], b.shape[0]))
-        b_mod.setdiag(b)
-        ab = (a.T * b_mod).T
-        if array_out:
-            if type(ab).__name__ == 'csr_matrix':
-                ab = ab.toarray()
-    else:
-        raise Exception, "Invalid format for 'spbroadcast' argument: %s and %s" % (
-            type(a).__name__, type(b).__name__)
-    return ab
-
-
-def spmin(a):
-    """
-    Minimum value in a matrix or vector to deal with sparse and dense objects
-
-    Parameters
-    ----------
-
-    a           : array or sparse matrix
-                  Object with one or more columns.
-
-    Returns
-    -------
-
-    min a       : int or float
-                  minimum value in a
-    """
-
-    if type(a).__name__ == 'ndarray':
-        return a.min()
-    elif type(a).__name__ == 'csr_matrix' or type(a).__name__ == 'csc_matrix':
-        try:
-            return min(a.data)
-        except:
-            if np.sum(a.data) == 0:
-                return 0
-            else:
-                raise Exception, "Error: could not evaluate the minimum value."
-    else:
-        raise Exception, "Invalid format for 'spmultiply' argument: %s and %s" % (
-            type(a).__name__, type(b).__name__)
-
-
-def spmax(a):
-    """
-    Maximum value in a matrix or vector to deal with sparse and dense objects
-
-    Parameters
-    ----------
-
-    a           : array or sparse matrix
-                  Object with one or more columns.
-
-    Returns
-    -------
-
-    max a       : int or float
-                  maximum value in a
-    """
-    if type(a).__name__ == 'ndarray':
-        return a.max()
-    elif type(a).__name__ == 'csr_matrix' or type(a).__name__ == 'csc_matrix':
-        try:
-            return max(a.data)
-        except:
-            if np.sum(a.data) == 0:
-                return 0
-            else:
-                raise Exception, "Error: could not evaluate the maximum value."
-    else:
-        raise Exception, "Invalid format for 'spmultiply' argument: %s and %s" % (
-            type(a).__name__, type(b).__name__)
-
-
 def set_warn(reg, warn):
     ''' Groups warning messages for printout. '''
     if warn:
@@ -805,29 +668,28 @@ def set_warn(reg, warn):
     else:
         pass
 
-
 def RegressionProps_basic(reg, betas=None, predy=None, u=None, sig2=None, sig2n_k=None, vm=None):
     ''' Set props based on arguments passed. '''
-    if betas != None:
+    if betas is not None:
         reg.betas = betas
-    if predy != None:
+    if predy is not None:
         reg.predy = predy
     else:
         try:
             reg.predy = spdot(reg.z, reg.betas)
         except:
             reg.predy = spdot(reg.x, reg.betas)
-    if u != None:
+    if u is not None:
         reg.u = u
     else:
         reg.u = reg.y - reg.predy
-    if sig2 != None:
+    if sig2 is not None:
         reg.sig2 = sig2
     elif sig2n_k:
         reg.sig2 = np.sum(reg.u ** 2) / (reg.n - reg.k)
     else:
         reg.sig2 = np.sum(reg.u ** 2) / reg.n
-    if vm != None:
+    if vm is not None:
         reg.vm = vm
 
 

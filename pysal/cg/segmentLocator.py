@@ -114,19 +114,19 @@ class SegmentGrid(object):
             raise Exception('Invalid arguments for SegmentGrid(): (' + str(self.x_range) + ', ' + str(self.y_range) + ', ' + str(self.res) + ')')
     @property
     def hashKeys(self):
-        if self._hashKeys == None:
+        if self._hashKeys is None:
             self._hashKeys = numpy.array(self.hash.keys(),dtype=float)
         return self._hashKeys
 
     @property
     def kd(self):
-        if self._kd == None:
+        if self._kd is None:
             self._kd = scipy.spatial.cKDTree(self.hashKeys)
         return self._kd
 
     @property
     def kd2(self):
-        if self._kd2 == None:
+        if self._kd2 is None:
             self._kd2 = scipy.spatial.KDTree(self.hashKeys)
         return self._kd2
 
@@ -304,7 +304,7 @@ def random_points(n):
     return [Point((random.random(), random.random())) for x in xrange(n)]
 
 
-def test_combo(bins, segments, qpoints):
+def combo_check(bins, segments, qpoints):
     G = SegmentLocator(segments, bins)
     G2 = BruteSegmentLocator(segs)
     for pt in qpoints:
@@ -325,7 +325,7 @@ def test_combo(bins, segments, qpoints):
             DEBUG = False
 
 
-def test_brute(segments, qpoints):
+def brute_check(segments, qpoints):
     t0 = time.time()
     G2 = BruteSegmentLocator(segs)
     t1 = time.time()
@@ -339,7 +339,7 @@ def test_brute(segments, qpoints):
     return q
 
 
-def test_grid(bins, segments, qpoints, visualize=False):
+def grid_check(bins, segments, qpoints, visualize=False):
     t0 = time.time()
     G = SegmentLocator(segments, bins)
     t1 = time.time()
